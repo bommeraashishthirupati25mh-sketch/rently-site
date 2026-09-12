@@ -4,6 +4,16 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>rently. — set up your room without owning any of it</title>
+<meta name="description" content="Rently delivers a brand-insured room-setup bundle to your hostel on move-in day and collects it on move-out day, plus semester storage and move coordination for campus students." />
+<link rel="canonical" href="https://rently-site.rently-campus.workers.dev/" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="rently. — set up your room without owning any of it" />
+<meta property="og:description" content="Rently delivers a brand-insured room-setup bundle to your hostel on move-in day and collects it on move-out day, plus semester storage and move coordination for campus students." />
+<meta property="og:url" content="https://rently-site.rently-campus.workers.dev/" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="rently. — set up your room without owning any of it" />
+<meta name="twitter:description" content="Rently delivers a brand-insured room-setup bundle to your hostel on move-in day and collects it on move-out day, plus semester storage and move coordination for campus students." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23152E29'/%3E%3Ctext x='19' y='45' font-family='Georgia,serif' font-weight='800' font-size='34' fill='%23fff'%3Er%3C/text%3E%3Ccircle cx='47' cy='40' r='4' fill='%23D6336C'/%3E%3C/svg%3E" />
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -18,6 +28,7 @@
   body { font-family: 'Inter', system-ui, sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; line-height: 1.5; }
   .rn-display { font-family: 'Big Shoulders Display', 'Inter', sans-serif; font-weight: 800; letter-spacing: -0.01em; }
   .rn-logo { display: flex; align-items: center; gap: 9px; cursor: pointer; }
+  .rn-logo-btn { background: none; border: none; padding: 0; font: inherit; }
   .rn-logo-badge { background: var(--ink); color: #fff; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-family: 'Big Shoulders Display', sans-serif; font-weight: 800; flex-shrink: 0; }
   .rn-logo-word { font-family: 'Big Shoulders Display', sans-serif; font-weight: 800; font-size: 22px; color: var(--ink); }
   .rn-dot { color: var(--magenta); }
@@ -105,6 +116,8 @@
   .rn-cat-label { font-family: 'Big Shoulders Display'; font-weight: 800; font-size: 20px; margin-bottom: 14px; display: block; }
   .rn-cat-items { display: flex; gap: 10px; flex-wrap: wrap; }
   .rn-chip { display: flex; align-items: center; gap: 10px; border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 14px; cursor: pointer; }
+  .rn-chip:focus-visible { outline: 2px solid var(--magenta); outline-offset: 1px; }
+  .rn-logo-btn:focus-visible { outline: 2px solid var(--magenta); outline-offset: 3px; border-radius: 6px; }
   .rn-chip:hover { border-color: var(--ink-faint); }
   .rn-chip.selected { border-color: var(--magenta); background: var(--magenta-tint); }
   .rn-chip-check { color: var(--ink-faint); display: flex; }
@@ -308,6 +321,7 @@ const CATEGORIES = [
   { key: "care", label: "Care", itemIds: ["iron"] },
 ];
 const BUNDLE_PRICE = 600;
+const MOVE_PRICE = 300;
 const LOW_STOCK = 30;
 const STATUSES = ["Pending", "Confirmed", "Delivered", "Returned"];
 const STORAGE_STATUSES = ["Requested", "Checked in", "Returned"];
@@ -391,6 +405,13 @@ function ItemIcon(iconName, size, tone) {
 }
 function money(n) { return "\u20b9" + Number(n).toLocaleString("en-IN"); }
 function todayISO() { return new Date().toISOString().slice(0, 10); }
+function chipA11y(role, checked, onActivate) {
+  return {
+    role, "aria-checked": checked, tabIndex: 0,
+    onClick: onActivate,
+    onKeyDown: e => { if (e.key === "Enter" || e.key === " " || e.code === "Space" || e.code === "Enter") { e.preventDefault(); onActivate(); } },
+  };
+}
 function addDaysISO(days) { const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); }
 function formatDate(iso, withYear) {
   if (!iso) return "";
@@ -807,7 +828,7 @@ function App() {
         : h("button", { className: "rn-my-rently", onClick: () => { setAuthMode("login"); goTo("auth"); } }, "Log in");
     return h("header", { className: "rn-header" },
       h("div", { className: "rn-header-inner" },
-        h("div", { onClick: () => goTo("home") }, Logo()),
+        h("button", { className: "rn-logo-btn", type: "button", "aria-label": "Rently home", onClick: () => goTo("home") }, Logo()),
         h("nav", { className: "rn-nav " + (navOpen ? "open" : "") }, mainNav.map(n => h("button", { key: n.id, className: "rn-nav-btn " + (view === n.id ? "active" : ""), onClick: () => goTo(n.id) }, n.label))),
         h("div", { className: "rn-header-right" }, rightAction),
         h("button", { className: "rn-burger", onClick: () => setNavOpen(v => !v), "aria-label": "Menu" }, Icon(navOpen ? "x" : "menu", 22))
@@ -888,7 +909,7 @@ function App() {
           h("div", { className: "rn-cat-items" }, cat.itemIds.map(id => {
             const selected = cartIds.includes(id);
             const stock = stockOf(id);
-            return h("div", { key: id, className: "rn-chip " + (selected ? "selected" : ""), onClick: () => toggleItem(id) },
+            return h("div", { key: id, className: "rn-chip " + (selected ? "selected" : ""), ...chipA11y("checkbox", selected, () => toggleItem(id)) },
               h("span", { className: "rn-chip-check" }, Icon(selected ? "check" : "circle", 18)),
               h("div", null,
                 h("span", { className: "rn-chip-name" }, ITEM_DEFS[id].name),
@@ -930,7 +951,7 @@ function App() {
           h("div", { className: "rn-field" }, h("label", null, "Semester"), h("div", { style: { fontSize: 14.5, padding: "11px 13px", borderRadius: 9, border: "1.5px solid var(--line)", background: "var(--cream)" } }, semesterLabel)),
           h("div", { className: "rn-field" }, h("label", null, "Delivery slot, move-in day"),
             h("div", { className: "rn-cat-items" }, DELIVERY_SLOTS.map(s =>
-              h("div", { key: s, className: "rn-chip " + (deliverySlot === s ? "selected" : ""), onClick: () => setDeliverySlot(s) },
+              h("div", { key: s, className: "rn-chip " + (deliverySlot === s ? "selected" : ""), ...chipA11y("radio", deliverySlot === s, () => setDeliverySlot(s)) },
                 h("span", { className: "rn-chip-check" }, Icon(deliverySlot === s ? "check" : "circle", 18)),
                 h("span", { className: "rn-chip-name" }, s)
               )
@@ -1053,8 +1074,8 @@ function App() {
               h("form", { onSubmit: submitStorageBooking },
                 h("div", { className: "rn-field" }, h("label", null, "What are you storing?"),
                   h("div", { className: "rn-cat-items" },
-                    h("div", { className: "rn-chip " + (bagSize === "small" ? "selected" : ""), onClick: () => setBagSize("small") }, h("span", { className: "rn-chip-check" }, Icon(bagSize === "small" ? "check" : "circle", 18)), h("div", null, h("span", { className: "rn-chip-name" }, "Small bag \u2014 ", money(500)), h("span", { className: "rn-chip-price" }, "\u2264 40L / 10kg"))),
-                    h("div", { className: "rn-chip " + (bagSize === "trunk" ? "selected" : ""), onClick: () => setBagSize("trunk") }, h("span", { className: "rn-chip-check" }, Icon(bagSize === "trunk" ? "check" : "circle", 18)), h("div", null, h("span", { className: "rn-chip-name" }, "Trunk / large box \u2014 ", money(800)), h("span", { className: "rn-chip-price" }, "\u2264 100L / 25kg")))
+                    h("div", { className: "rn-chip " + (bagSize === "small" ? "selected" : ""), ...chipA11y("radio", bagSize === "small", () => setBagSize("small")) }, h("span", { className: "rn-chip-check" }, Icon(bagSize === "small" ? "check" : "circle", 18)), h("div", null, h("span", { className: "rn-chip-name" }, "Small bag \u2014 ", money(500)), h("span", { className: "rn-chip-price" }, "\u2264 40L / 10kg"))),
+                    h("div", { className: "rn-chip " + (bagSize === "trunk" ? "selected" : ""), ...chipA11y("radio", bagSize === "trunk", () => setBagSize("trunk")) }, h("span", { className: "rn-chip-check" }, Icon(bagSize === "trunk" ? "check" : "circle", 18)), h("div", null, h("span", { className: "rn-chip-name" }, "Trunk / large box \u2014 ", money(800)), h("span", { className: "rn-chip-price" }, "\u2264 100L / 25kg")))
                   )
                 ),
                 HostelField(storageBlock, storageRoom, setStorageBlock, setStorageRoom),
@@ -1096,8 +1117,8 @@ function App() {
               h("form", { onSubmit: submitMoveBooking },
                 h("div", { className: "rn-field" }, h("label", null, "Type"),
                   h("div", { className: "rn-cat-items" },
-                    h("div", { className: "rn-chip " + (moveType === "move-in" ? "selected" : ""), onClick: () => setMoveType("move-in") }, h("span", { className: "rn-chip-check" }, Icon(moveType === "move-in" ? "check" : "circle", 18)), h("span", { className: "rn-chip-name" }, "Move-in")),
-                    h("div", { className: "rn-chip " + (moveType === "move-out" ? "selected" : ""), onClick: () => setMoveType("move-out") }, h("span", { className: "rn-chip-check" }, Icon(moveType === "move-out" ? "check" : "circle", 18)), h("span", { className: "rn-chip-name" }, "Move-out"))
+                    h("div", { className: "rn-chip " + (moveType === "move-in" ? "selected" : ""), ...chipA11y("radio", moveType === "move-in", () => setMoveType("move-in")) }, h("span", { className: "rn-chip-check" }, Icon(moveType === "move-in" ? "check" : "circle", 18)), h("span", { className: "rn-chip-name" }, "Move-in — ", money(MOVE_PRICE))),
+                    h("div", { className: "rn-chip " + (moveType === "move-out" ? "selected" : ""), ...chipA11y("radio", moveType === "move-out", () => setMoveType("move-out")) }, h("span", { className: "rn-chip-check" }, Icon(moveType === "move-out" ? "check" : "circle", 18)), h("span", { className: "rn-chip-name" }, "Move-out — ", money(MOVE_PRICE)))
                   )
                 ),
                 HostelField(moveBlock, moveRoom, setMoveBlock, setMoveRoom),

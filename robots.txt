@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rently-site.rently-campus.workers.dev/sitemap.xml
