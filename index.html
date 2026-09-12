@@ -404,7 +404,8 @@ function ItemIcon(iconName, size, tone) {
   return h("span", { className: "rn-item-icon " + (tone === "ink" ? "rn-tone-ink" : ""), style: { width: size * 1.9, height: size * 1.9 } }, Icon(iconName, size));
 }
 function money(n) { return "\u20b9" + Number(n).toLocaleString("en-IN"); }
-function todayISO() { return new Date().toISOString().slice(0, 10); }
+function dateToISO(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function todayISO() { return dateToISO(new Date()); }
 function chipA11y(role, checked, onActivate) {
   return {
     role, "aria-checked": checked, tabIndex: 0,
@@ -412,13 +413,29 @@ function chipA11y(role, checked, onActivate) {
     onKeyDown: e => { if (e.key === "Enter" || e.key === " " || e.code === "Space" || e.code === "Enter") { e.preventDefault(); onActivate(); } },
   };
 }
-function addDaysISO(days) { const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); }
+function addDaysISO(days) { const d = new Date(); d.setDate(d.getDate() + days); return dateToISO(d); }
 function formatDate(iso, withYear) {
   if (!iso) return "";
   const d = new Date(iso + "T00:00:00");
   const opts = { day: "numeric", month: "long" };
   if (withYear) opts.year = "numeric";
   return d.toLocaleDateString("en-IN", opts);
+}
+function relativeDayLabel(iso) {
+  if (!iso) return "";
+  if (iso === todayISO()) return "Today";
+  if (iso === addDaysISO(1)) return "Tomorrow";
+  return formatDate(iso, true);
+}
+function buildCommentTree(comments) {
+  const byId = {};
+  comments.forEach(c => { byId[c.id] = { ...c, replies: [] }; });
+  const roots = [];
+  comments.forEach(c => {
+    if (c.parent_comment_id && byId[c.parent_comment_id]) byId[c.parent_comment_id].replies.push(byId[c.id]);
+    else roots.push(byId[c.id]);
+  });
+  return roots;
 }
 function greetingWord() {
   const hr = new Date().getHours();
@@ -497,9 +514,18 @@ function App() {
   const [cartIds, setCartIds] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [itemDemand, setItemDemand] = useState({});
+  const [circlePosts, setCirclePosts] = useState([]);
   const [circleComments, setCircleComments] = useState({});
-  const [openComments, setOpenComments] = useState({});
+  const [openThreads, setOpenThreads] = useState({});
   const [commentDraft, setCommentDraft] = useState({});
+  const [replyTarget, setReplyTarget] = useState({});
+  const [newPostOpen, setNewPostOpen] = useState(false);
+  const [newPostKind, setNewPostKind] = useState("Announcement");
+  const [newPostTitle, setNewPostTitle] = useState("");
+  const [newPostBody, setNewPostBody] = useState("");
+  const [newPostMeta, setNewPostMeta] = useState("");
+  const [newPostEventDate, setNewPostEventDate] = useState("");
+  const [circleMsg, setCircleMsg] = useState("");
   const [bookings, setBookings] = useState([]);
   const [myBookings, setMyBookings] = useState([]);
   const [storageBookings, setStorageBookings] = useState([]);
@@ -556,11 +582,15 @@ function App() {
   useEffect(() => {
     if (session) {
       loadProfile();
+      refreshCirclePosts();
     } else {
       setProfile(null);
       setMyBookings([]);
       setMyStorage([]);
       setMyMoves([]);
+      setCirclePosts([]);
+      setCircleComments({});
+      setOpenThreads({});
     }
   }, [session]);
 
@@ -598,24 +628,44 @@ function App() {
     const { data } = await db.rpc("get_item_demand");
     if (data) setItemDemand(Object.fromEntries(data.map(r => [r.item_id, r.demand])));
   }
-  async function toggleComments(postId) {
-    setOpenComments(prev => ({ ...prev, [postId]: !prev[postId] }));
+  async function refreshCirclePosts() {
+    const { data } = await db.from("circles_posts").select("*").order("created_at", { ascending: false });
+    if (data) setCirclePosts(data);
+  }
+  async function toggleThread(postId) {
+    setOpenThreads(prev => ({ ...prev, [postId]: !prev[postId] }));
     if (!circleComments[postId]) {
       const { data } = await db.from("circle_comments").select("*").eq("post_id", postId).order("created_at");
       if (data) setCircleComments(prev => ({ ...prev, [postId]: data }));
     }
   }
-  async function submitComment(postId, e) {
+  async function submitComment(postId, parentCommentId, draftKey, e) {
     e.preventDefault();
-    const body = (commentDraft[postId] || "").trim();
+    const body = (commentDraft[draftKey] || "").trim();
     if (!body || !session) return;
     const { data, error } = await db.from("circle_comments").insert({
-      post_id: postId, author_id: session.user.id, author_name: profile?.full_name || "Student", body,
+      post_id: postId, parent_comment_id: parentCommentId, author_id: session.user.id,
+      author_name: profile?.full_name || "Student", body,
     }).select().single();
     if (!error && data) {
       setCircleComments(prev => ({ ...prev, [postId]: [...(prev[postId] || []), data] }));
-      setCommentDraft(prev => ({ ...prev, [postId]: "" }));
+      setCommentDraft(prev => ({ ...prev, [draftKey]: "" }));
+      setReplyTarget(prev => ({ ...prev, [postId]: null }));
     }
+  }
+  async function submitNewPost(e) {
+    e.preventDefault();
+    if (!session) return;
+    if (!newPostTitle.trim()) { setCircleMsg("Add a title first."); return; }
+    const id = "CIR-" + Math.floor(1000 + Math.random() * 9000);
+    const { error } = await db.from("circles_posts").insert({
+      id, author_id: session.user.id, author_name: profile?.full_name || "Student",
+      kind: newPostKind, title: newPostTitle.trim(), body: newPostBody.trim(),
+      meta: newPostMeta.trim(), event_date: newPostKind === "Event" && newPostEventDate ? newPostEventDate : null,
+    });
+    if (error) { setCircleMsg("Couldn't post: " + error.message); return; }
+    setNewPostTitle(""); setNewPostBody(""); setNewPostMeta(""); setNewPostEventDate(""); setNewPostOpen(false); setCircleMsg("");
+    refreshCirclePosts();
   }
   async function refreshMyBookings() {
     const { data } = await db.from("bookings").select("*").order("created_at", { ascending: false });
@@ -1083,41 +1133,80 @@ function App() {
     );
   }
 
+  function CommentNode(postId, comment, depth) {
+    const draftKey = "reply:" + comment.id;
+    const isReplying = replyTarget[postId] === comment.id;
+    return h("div", { key: comment.id, style: { marginTop: 10, marginLeft: depth > 0 ? 18 : 0, paddingLeft: depth > 0 ? 10 : 0, borderLeft: depth > 0 ? "2px solid var(--line)" : "none" } },
+      h("b", { style: { fontSize: 13 } }, comment.author_name || "Student"),
+      h("span", { style: { fontSize: 12, color: "var(--ink-faint)", marginLeft: 6 } }, formatDate(comment.created_at.slice(0, 10))),
+      h("p", { style: { margin: "2px 0 4px", fontSize: 13.5 } }, comment.body),
+      session && h("button", { className: "rn-link-btn", style: { fontSize: 12.5 }, onClick: () => setReplyTarget(prev => ({ ...prev, [postId]: isReplying ? null : comment.id })) }, isReplying ? "Cancel" : "Reply"),
+      isReplying && h("form", { onSubmit: e => submitComment(postId, comment.id, draftKey, e), style: { display: "flex", gap: 8, marginTop: 6 } },
+        h("input", { value: commentDraft[draftKey] || "", onChange: e => setCommentDraft(prev => ({ ...prev, [draftKey]: e.target.value })), placeholder: "Write a reply…", style: { flex: 1 } }),
+        h("button", { className: "rn-btn rn-btn-ghost", type: "submit" }, "Reply")
+      ),
+      comment.replies.map(r => CommentNode(postId, r, depth + 1))
+    );
+  }
   function CirclesView() {
+    const kindIcon = { Announcement: "clipboard", Event: "mic", Marketplace: "boxes" };
     return h(React.Fragment, null,
       h("div", { className: "rn-circles-head" }, h("b", null, "IBS Hyderabad"), h("span", null, "Your campus"), h("div", { className: "rn-tag-row" }, h("span", { className: "rn-tag" }, "Batch 2026"), h("span", { className: "rn-tag" }, "MBA"), h("span", { className: "rn-tag" }, "Hostel"))),
-      h("div", { className: "rn-section-head" }, h("h2", { className: "rn-display", style: { fontSize: 26 } }, "Trending on campus")),
-      h("div", { className: "rn-feed" }, CIRCLES_FEED.map(f => {
-        const comments = circleComments[f.id] || [];
-        const open = !!openComments[f.id];
-        return h("div", { key: f.id, className: "rn-feed-row", style: { flexDirection: "column", alignItems: "stretch" } },
-          h("div", { style: { display: "flex", alignItems: "center", gap: 12, width: "100%" } },
-            ItemIcon(f.icon, 16),
-            h("div", { style: { flex: 1 } },
-              h("div", { className: "rn-feed-kind" }, f.kind, h("span", { className: "rn-verified" }, Icon("userCheck", 11), " Verified")),
-              h("div", { className: "rn-feed-title" }, f.title)
-            ),
-            h("div", { className: "rn-feed-meta" }, f.meta)
+      h("div", { className: "rn-section-head" },
+        h("h2", { className: "rn-display", style: { fontSize: 26 } }, "Trending on campus"),
+        session && h("button", { className: "rn-btn rn-btn-primary", onClick: () => setNewPostOpen(v => !v) }, Icon("plus", 16), newPostOpen ? "Cancel" : "New post")
+      ),
+      !session && h("p", { className: "rn-note" }, "Log in to see and post in Circles."),
+      session && newPostOpen && h("div", { className: "rn-acct-card", style: { marginBottom: 24 } },
+        h("form", { onSubmit: submitNewPost },
+          h("div", { className: "rn-field" }, h("label", null, "Type"),
+            h("div", { className: "rn-cat-items" }, ["Announcement", "Event", "Marketplace"].map(k =>
+              h("div", { key: k, className: "rn-chip " + (newPostKind === k ? "selected" : ""), ...chipA11y("radio", newPostKind === k, () => setNewPostKind(k)) },
+                h("span", { className: "rn-chip-check" }, Icon(newPostKind === k ? "check" : "circle", 18)), h("span", { className: "rn-chip-name" }, k))
+            ))
           ),
-          h("button", { className: "rn-link-btn", style: { alignSelf: "flex-start", marginTop: 8 }, onClick: () => toggleComments(f.id) },
+          h("div", { className: "rn-field" }, h("label", null, "Title"), h("input", { value: newPostTitle, onChange: e => setNewPostTitle(e.target.value), placeholder: "e.g. Cycle for rent", required: true })),
+          h("div", { className: "rn-field" }, h("label", null, "Details"), h("input", { value: newPostBody, onChange: e => setNewPostBody(e.target.value), placeholder: "Optional description" })),
+          newPostKind === "Marketplace" && h("div", { className: "rn-field" }, h("label", null, "Price"), h("input", { value: newPostMeta, onChange: e => setNewPostMeta(e.target.value), placeholder: "e.g. ₹100/week" })),
+          newPostKind === "Event" && h("div", { className: "rn-field" }, h("label", null, "Event date"), h("input", { type: "date", value: newPostEventDate, min: todayISO(), onChange: e => setNewPostEventDate(e.target.value) })),
+          newPostKind === "Event" && h("div", { className: "rn-field" }, h("label", null, "Time (optional)"), h("input", { value: newPostMeta, onChange: e => setNewPostMeta(e.target.value), placeholder: "e.g. 6 PM" })),
+          h("button", { className: "rn-btn rn-btn-primary", type: "submit" }, "Post"),
+          circleMsg && h("p", { className: "rn-note" }, circleMsg)
+        )
+      ),
+      h("div", { className: "rn-feed" }, circlePosts.map(p => {
+        const comments = circleComments[p.id] || [];
+        const tree = buildCommentTree(comments);
+        const open = !!openThreads[p.id];
+        const metaLine = p.kind === "Event" && p.event_date
+          ? relativeDayLabel(p.event_date) + (p.meta ? " · " + p.meta : "")
+          : p.meta;
+        return h("div", { key: p.id, className: "rn-feed-row", style: { flexDirection: "column", alignItems: "stretch" } },
+          h("div", { style: { display: "flex", alignItems: "center", gap: 12, width: "100%" } },
+            ItemIcon(kindIcon[p.kind] || "clipboard", 16),
+            h("div", { style: { flex: 1 } },
+              h("div", { className: "rn-feed-kind" }, p.kind, h("span", { style: { marginLeft: 8, color: "var(--ink-faint)", fontSize: 12 } }, p.author_name || "Student")),
+              h("div", { className: "rn-feed-title" }, p.title),
+              p.body && h("p", { style: { margin: "2px 0 0", fontSize: 13, color: "var(--ink-soft)" } }, p.body)
+            ),
+            h("div", { className: "rn-feed-meta" }, metaLine)
+          ),
+          h("button", { className: "rn-link-btn", style: { alignSelf: "flex-start", marginTop: 8 }, onClick: () => toggleThread(p.id) },
             open ? "Hide comments" : (comments.length ? comments.length + (comments.length === 1 ? " comment" : " comments") : "Comments")
           ),
-          open && h("div", { style: { marginTop: 8, paddingLeft: 10, borderLeft: "2px solid var(--line)" } },
-            comments.length === 0 && h("p", { style: { fontSize: 13, color: "var(--ink-faint)", margin: 0 } }, "No comments yet."),
-            comments.map(c => h("div", { key: c.id, style: { marginBottom: 10 } },
-              h("b", { style: { fontSize: 13 } }, c.author_name || "Student"),
-              h("span", { style: { fontSize: 12, color: "var(--ink-faint)", marginLeft: 6 } }, formatDate(c.created_at.slice(0, 10))),
-              h("p", { style: { margin: "2px 0 0", fontSize: 13.5 } }, c.body)
-            )),
+          open && h("div", { style: { marginTop: 8 } },
+            tree.length === 0 && h("p", { style: { fontSize: 13, color: "var(--ink-faint)", margin: 0 } }, "No comments yet."),
+            tree.map(c => CommentNode(p.id, c, 0)),
             session
-              ? h("form", { onSubmit: e => submitComment(f.id, e), style: { display: "flex", gap: 8, marginTop: 8 } },
-                  h("input", { value: commentDraft[f.id] || "", onChange: e => setCommentDraft(prev => ({ ...prev, [f.id]: e.target.value })), placeholder: "Add a comment…", style: { flex: 1 } }),
+              ? h("form", { onSubmit: e => submitComment(p.id, null, p.id, e), style: { display: "flex", gap: 8, marginTop: 10 } },
+                  h("input", { value: commentDraft[p.id] || "", onChange: e => setCommentDraft(prev => ({ ...prev, [p.id]: e.target.value })), placeholder: "Add a comment…", style: { flex: 1 } }),
                   h("button", { className: "rn-btn rn-btn-ghost", type: "submit" }, "Post")
                 )
               : h("p", { style: { fontSize: 13, color: "var(--ink-faint)" } }, "Log in to comment.")
           )
         );
-      }))
+      })),
+      session && circlePosts.length === 0 && h("p", { className: "rn-note" }, "No posts yet — be the first.")
     );
   }
   function StorageView() {
