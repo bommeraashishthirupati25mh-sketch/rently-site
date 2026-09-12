@@ -766,7 +766,7 @@ function App() {
             h("button", { className: "rn-logout", onClick: () => goTo("account") }, "Account"),
             h("button", { className: "rn-logout", onClick: handleLogout }, "Log out")
           )
-        : h("button", { className: "rn-my-rently", onClick: () => goTo("auth") }, "Log in");
+        : h("button", { className: "rn-my-rently", onClick: () => { setAuthMode("login"); goTo("auth"); } }, "Log in");
     return h("header", { className: "rn-header" },
       h("div", { className: "rn-header-inner" },
         h("div", { onClick: () => goTo("home") }, Logo()),
