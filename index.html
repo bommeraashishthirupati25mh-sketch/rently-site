@@ -197,6 +197,8 @@
   .rn-auth-wrap p { color: var(--ink-soft); font-size: 14px; margin: 0 0 22px; }
   .rn-auth-toggle { display: flex; gap: 6px; margin-top: 16px; font-size: 13.5px; color: var(--ink-soft); }
   .rn-footer { border-top: 1px solid var(--line); padding: 30px 24px; display: flex; justify-content: space-between; align-items: center; color: var(--ink-soft); font-size: 13px; max-width: 1160px; margin: 0 auto; flex-wrap: wrap; gap: 10px; }
+  .rn-footer a { color: var(--ink-soft); text-decoration: none; }
+  .rn-footer a:hover { color: var(--ink); text-decoration: underline; }
   .rn-loading { text-align: center; padding: 80px 20px; color: var(--ink-soft); }
   .rn-burger { display: none; background: none; border: none; cursor: pointer; color: var(--ink); padding: 6px; flex-shrink: 0; }
 
@@ -313,6 +315,24 @@ const MOVE_STATUSES = ["Requested", "Scheduled", "Completed"];
 // Placeholder block names \u2014 tell Rently support your campus's real hostel block names to swap these in.
 const HOSTEL_BLOCKS = ["Hostel A", "Hostel B", "Hostel C", "Hostel D", "Hostel E"];
 const DELIVERY_SLOTS = ["Morning \u00b7 10:00 AM \u2013 1:00 PM", "Afternoon \u00b7 2:00 PM \u2013 5:00 PM"];
+const LAST_UPDATED = "12 September 2026";
+const PRIVACY_SECTIONS = [
+  { h: "Information we collect", p: "Your campus email and password (handled by our authentication provider, Supabase — we never see your password in plain text), plus profile details you give us: full name, hostel block, and room number. When you book, we also store what you booked, your chosen delivery slot, and your semester dates." },
+  { h: "How we use it", p: "Solely to run the service: to create and manage your account, route deliveries and pickups to the right hostel block and room, and show admins and transport partners the bookings they need to fulfil. We don't sell your data or use it for advertising." },
+  { h: "Who can see it", p: "Your booking details are visible to Rently's admin and transport-partner accounts so orders can be fulfilled. We don't share your personal information with any other third party except where required by law." },
+  { h: "Data retention", p: "We keep account and booking records for as long as your account is active, plus a reasonable period afterward for record-keeping. You can request deletion of your account and associated data at any time by contacting us." },
+  { h: "Your choices", p: "You can review and update your profile details from the Account page at any time, change your password, or ask us to delete your account entirely." },
+  { h: "Changes to this policy", p: "If this policy changes materially, we'll update the date below and, where appropriate, let you know." },
+];
+const TERMS_SECTIONS = [
+  { h: "Who this is for", p: "Rently is a pilot service for students on our partner campus to rent room setup items, book storage over breaks, and arrange move-in/move-out transport. You must be able to receive deliveries at a hostel block on that campus to use the service." },
+  { h: "Your account", p: "You're responsible for keeping your login credentials secure and for the accuracy of the profile details (name, hostel block, room number) you provide — deliveries are routed using this information." },
+  { h: "Bookings, pricing & deposits", p: "Prices shown at checkout are final at the time of booking. A refundable deposit may be held per item; see our wear & damage policy (linked from checkout) for how deposits, normal wear, and damage/loss are handled." },
+  { h: "Cancellations", p: "To cancel or change a booking, request it through your account dashboard or contact us directly; we'll confirm what, if anything, is refundable based on how far along the booking is." },
+  { h: "Acceptable use", p: "Don't use Rently to book on behalf of someone who isn't a verified student on the partner campus, to circumvent pricing, or to misuse the Circles community feed (no spam, no listings unrelated to campus life)." },
+  { h: "Liability", p: "Rently coordinates delivery, storage and moves through partner operators; we aim for care and reliability but items are provided ‘as is’ subject to the damage policy above, and we aren't liable for delays caused by circumstances outside our reasonable control." },
+  { h: "Changes & termination", p: "We may update these terms as the pilot evolves; continued use after an update means you accept the new terms. We may suspend accounts that violate acceptable use." },
+];
 const DAMAGE_POLICY = [
   { h: "Refundable deposit", p: "A refundable deposit is held per item at booking and released in full once everything is returned in its original condition." },
   { h: "Normal wear", p: "Ordinary signs of use \u2014 minor scuffs, faded fabric \u2014 are expected and never charged." },
@@ -370,6 +390,8 @@ function ItemIcon(iconName, size, tone) {
   return h("span", { className: "rn-item-icon " + (tone === "ink" ? "rn-tone-ink" : ""), style: { width: size * 1.9, height: size * 1.9 } }, Icon(iconName, size));
 }
 function money(n) { return "\u20b9" + Number(n).toLocaleString("en-IN"); }
+function todayISO() { return new Date().toISOString().slice(0, 10); }
+function addDaysISO(days) { const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); }
 function formatDate(iso, withYear) {
   if (!iso) return "";
   const d = new Date(iso + "T00:00:00");
@@ -444,7 +466,12 @@ function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [authReady, setAuthReady] = useState(false);
-  const [view, setView] = useState("home");
+  const [view, setView] = useState(() => {
+    const p = window.location.pathname.replace(/\/+$/, "");
+    if (p === "/privacy") return "privacy";
+    if (p === "/terms") return "terms";
+    return "home";
+  });
   const [navOpen, setNavOpen] = useState(false);
   const [cartIds, setCartIds] = useState([]);
   const [inventory, setInventory] = useState([]);
@@ -455,11 +482,11 @@ function App() {
   const [moveBookings, setMoveBookings] = useState([]);
   const [myMoves, setMyMoves] = useState([]);
   const [bagSize, setBagSize] = useState("small");
-  const [dropOffDate, setDropOffDate] = useState("2026-11-30");
-  const [pickupDate, setPickupDate] = useState("2027-01-05");
+  const [dropOffDate, setDropOffDate] = useState(() => addDaysISO(30));
+  const [pickupDate, setPickupDate] = useState(() => addDaysISO(66));
   const [storageMsg, setStorageMsg] = useState("");
   const [moveType, setMoveType] = useState("move-in");
-  const [moveDate, setMoveDate] = useState("2026-07-15");
+  const [moveDate, setMoveDate] = useState(() => addDaysISO(7));
   const [moveNotes, setMoveNotes] = useState("");
   const [moveMsg, setMoveMsg] = useState("");
   const [authMode, setAuthMode] = useState("signup");
@@ -469,8 +496,8 @@ function App() {
   const [bookName, setBookName] = useState("");
   const [bookRoom, setBookRoom] = useState("");
   const [formError, setFormError] = useState("");
-  const [semStart, setSemStart] = useState("2026-07-15");
-  const [semEnd, setSemEnd] = useState("2026-11-30");
+  const [semStart, setSemStart] = useState(() => addDaysISO(7));
+  const [semEnd, setSemEnd] = useState(() => addDaysISO(145));
   const [semEditing, setSemEditing] = useState(false);
   const [lastBookingId, setLastBookingId] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -524,8 +551,8 @@ function App() {
       setStorageRoom(profile.room_info || "");
       setMoveBlock(profile.hostel_block || "");
       setMoveRoom(profile.room_info || "");
-      setSemStart(profile.semester_start || "2026-07-15");
-      setSemEnd(profile.semester_end || "2026-11-30");
+      setSemStart(profile.semester_start || addDaysISO(7));
+      setSemEnd(profile.semester_end || addDaysISO(145));
       if (profile.role === "admin") { refreshAllBookings(); refreshInventory(); refreshAllStorage(); refreshAllMoves(); }
       else if (profile.role === "transporter") { refreshAllBookings(); refreshAllStorage(); refreshAllMoves(); }
       else { refreshMyBookings(); refreshMyStorage(); refreshMyMoves(); }
@@ -569,6 +596,7 @@ function App() {
     e.preventDefault();
     if (!session) { setStorageMsg("Log in to request storage."); return; }
     if (!storageBlock || !storageRoom.trim()) { setStorageMsg("Pick your hostel block and room number."); return; }
+    if (dropOffDate < todayISO()) { setStorageMsg("Drop-off date can't be in the past."); return; }
     if (new Date(pickupDate) <= new Date(dropOffDate)) { setStorageMsg("Pickup date needs to be after drop-off."); return; }
     setBusy(true);
     const id = "STG-" + Math.floor(1000 + Math.random() * 9000);
@@ -586,6 +614,7 @@ function App() {
     e.preventDefault();
     if (!session) { setMoveMsg("Log in to request a move."); return; }
     if (!moveBlock || !moveRoom.trim()) { setMoveMsg("Pick your hostel block and room number."); return; }
+    if (moveDate < todayISO()) { setMoveMsg("Move date can't be in the past."); return; }
     setBusy(true);
     const id = "MOV-" + Math.floor(1000 + Math.random() * 9000);
     const { error } = await db.from("move_bookings").insert({
@@ -618,7 +647,13 @@ function App() {
   const bundleSavings = Math.max(0, allItemsSum - BUNDLE_PRICE);
   const semesterLabel = formatDate(semStart) + " \u2013 " + formatDate(semEnd, true);
 
-  function goTo(v) { setView(v); setNavOpen(false); window.scrollTo && window.scrollTo({ top: 0, behavior: "instant" }); }
+  function goTo(v) {
+    setView(v);
+    setNavOpen(false);
+    const path = v === "privacy" ? "/privacy" : v === "terms" ? "/terms" : "/";
+    if (window.history && window.location.pathname !== path) window.history.pushState({}, "", path);
+    window.scrollTo && window.scrollTo({ top: 0, behavior: "instant" });
+  }
   function toggleItem(id) { setCartIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]); }
 
   async function handleAuth(e) {
@@ -680,6 +715,8 @@ function App() {
   }
 
   async function saveSemester() {
+    if (semStart < todayISO()) { alert("Semester start can't be in the past."); return; }
+    if (semEnd <= semStart) { alert("Semester end needs to be after the start date."); return; }
     setSemEditing(false);
     if (!session) return;
     const { error } = await db.from("profiles").update({ semester_start: semStart, semester_end: semEnd }).eq("id", session.user.id);
@@ -690,6 +727,7 @@ function App() {
     if (!session) { setFormError("Log in or create an account to finish booking."); return; }
     if (!bookName.trim() || !bookBlock || !bookRoom.trim()) { setFormError("Add your name, hostel block and room number to start the booking."); return; }
     if (cartIds.length === 0) { setFormError("Pick at least one item before confirming."); return; }
+    if (semStart < todayISO()) { setFormError("Your semester start date is in the past — update it in My Rently before booking a delivery."); return; }
     setBusy(true);
     let error, id;
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -746,9 +784,9 @@ function App() {
       h("div", null, h("b", null, "Your semester"), !semEditing && h("span", { style: { marginLeft: 10, color: "var(--ink-soft)", fontSize: 13.5 } }, semesterLabel)),
       semEditing
         ? h("div", { className: "rn-semester-inputs" },
-            h("input", { type: "date", value: semStart, onChange: e => setSemStart(e.target.value) }),
+            h("input", { type: "date", value: semStart, min: todayISO(), onChange: e => setSemStart(e.target.value) }),
             Icon("arrowRight", 14, "var(--ink-faint)"),
-            h("input", { type: "date", value: semEnd, onChange: e => setSemEnd(e.target.value) }),
+            h("input", { type: "date", value: semEnd, min: semStart, onChange: e => setSemEnd(e.target.value) }),
             h("button", { className: "rn-link-btn", onClick: saveSemester }, "Done")
           )
         : h("button", { className: "rn-link-btn", onClick: () => setSemEditing(true) }, compact ? "Change dates" : "Not moving in July? Change dates")
@@ -1020,8 +1058,8 @@ function App() {
                   )
                 ),
                 HostelField(storageBlock, storageRoom, setStorageBlock, setStorageRoom),
-                h("div", { className: "rn-field" }, h("label", null, "Drop-off date"), h("input", { type: "date", value: dropOffDate, onChange: e => setDropOffDate(e.target.value) })),
-                h("div", { className: "rn-field" }, h("label", null, "Pickup date"), h("input", { type: "date", value: pickupDate, onChange: e => setPickupDate(e.target.value) })),
+                h("div", { className: "rn-field" }, h("label", null, "Drop-off date"), h("input", { type: "date", value: dropOffDate, min: todayISO(), onChange: e => setDropOffDate(e.target.value) })),
+                h("div", { className: "rn-field" }, h("label", null, "Pickup date"), h("input", { type: "date", value: pickupDate, min: dropOffDate, onChange: e => setPickupDate(e.target.value) })),
                 h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: busy }, busy ? "Submitting\u2026" : "Request storage")
               ),
               storageMsg && h("p", { className: "rn-note" }, storageMsg)
@@ -1063,7 +1101,7 @@ function App() {
                   )
                 ),
                 HostelField(moveBlock, moveRoom, setMoveBlock, setMoveRoom),
-                h("div", { className: "rn-field" }, h("label", null, "Date"), h("input", { type: "date", value: moveDate, onChange: e => setMoveDate(e.target.value) })),
+                h("div", { className: "rn-field" }, h("label", null, "Date"), h("input", { type: "date", value: moveDate, min: todayISO(), onChange: e => setMoveDate(e.target.value) })),
                 h("div", { className: "rn-field" }, h("label", null, "Notes (optional)"), h("input", { value: moveNotes, onChange: e => setMoveNotes(e.target.value), placeholder: "e.g. 2 trunks, 1 cycle" })),
                 h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: busy }, busy ? "Submitting\u2026" : "Request move")
               ),
@@ -1227,6 +1265,19 @@ function App() {
     );
   }
 
+  function LegalView(title, sections) {
+    return h(React.Fragment, null,
+      h("div", { className: "rn-simple-hero" }, h("h1", { className: "rn-display" }, title), h("p", null, "Last updated " + LAST_UPDATED + ". This is a draft policy for the Rently pilot and hasn't been reviewed by a lawyer — treat it as a placeholder, not final legal advice.")),
+      h("div", { className: "rn-acct-card", style: { marginTop: 24, maxWidth: 680 } },
+        sections.map(s => h("div", { key: s.h, style: { marginBottom: 18 } },
+          h("h3", { style: { margin: "0 0 6px", fontSize: 16 } }, s.h),
+          h("p", { style: { margin: 0, fontSize: 14.5, color: "var(--ink-soft)", lineHeight: 1.6 } }, s.p)
+        ))
+      )
+    );
+  }
+  function PrivacyView() { return LegalView("Privacy policy", PRIVACY_SECTIONS); }
+  function TermsView() { return LegalView("Terms of service", TERMS_SECTIONS); }
   function ResetPasswordView() {
     return h("div", { className: "rn-auth-wrap" },
       h("h1", { className: "rn-display" }, "Set a new password"),
@@ -1253,11 +1304,20 @@ function App() {
   else if (view === "storage") body = StorageView();
   else if (view === "moves") body = MovesView();
   else if (view === "auth") body = AuthForm({});
+  else if (view === "privacy") body = PrivacyView();
+  else if (view === "terms") body = TermsView();
 
   return h("div", null,
     Header(),
     h("main", { className: "rn-main" }, body),
-    h("footer", { className: "rn-footer" }, Logo(26), h("span", null, "Live pilot build \u00b7 backed by a real database \u00b7 built for the Rently pilot")),
+    h("footer", { className: "rn-footer" },
+      Logo(26),
+      h("span", null, "Live pilot build \u00b7 backed by a real database \u00b7 built for the Rently pilot"),
+      h("div", { style: { display: "flex", gap: 16 } },
+        h("a", { href: "/privacy", onClick: e => { e.preventDefault(); goTo("privacy"); } }, "Privacy"),
+        h("a", { href: "/terms", onClick: e => { e.preventDefault(); goTo("terms"); } }, "Terms")
+      )
+    ),
     PolicyModal(policyOpen, () => setPolicyOpen(false))
   );
 }
