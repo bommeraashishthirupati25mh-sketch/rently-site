@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>rently. — set up your room without owning any of it</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+  :root {
+    --cream: #F5F1E7; --cream-card: #ECE5D3; --ink: #152E29; --ink-soft: #4A605A; --ink-faint: #7C8C86;
+    --magenta: #D6336C; --magenta-dark: #AF1F52; --magenta-tint: #F6DCE5; --line: rgba(21,46,41,0.14);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; line-height: 1.5; }
+  .rn-display { font-family: 'Big Shoulders Display', 'Inter', sans-serif; font-weight: 800; letter-spacing: -0.01em; }
+  .rn-logo { display: flex; align-items: center; gap: 9px; cursor: pointer; }
+  .rn-logo-badge { background: var(--ink); color: #fff; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-family: 'Big Shoulders Display', sans-serif; font-weight: 800; flex-shrink: 0; }
+  .rn-logo-word { font-family: 'Big Shoulders Display', sans-serif; font-weight: 800; font-size: 22px; color: var(--ink); }
+  .rn-dot { color: var(--magenta); }
+  .rn-header { position: sticky; top: 0; z-index: 40; background: rgba(245,241,231,0.94); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+  .rn-header-inner { max-width: 1160px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .rn-nav { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+  .rn-nav-btn { background: transparent; border: none; font-family: 'Inter'; font-weight: 600; font-size: 14.5px; color: var(--ink-soft); padding: 9px 13px; border-radius: 999px; cursor: pointer; }
+  .rn-nav-btn:hover { background: var(--cream-card); color: var(--ink); }
+  .rn-nav-btn.active { background: var(--ink); color: var(--cream); }
+  .rn-header-right { display: flex; align-items: center; gap: 10px; }
+  .rn-my-rently { background: var(--magenta); color: #fff; border: none; font-family: 'Inter'; font-weight: 700; font-size: 13.5px; padding: 9px 16px; border-radius: 999px; cursor: pointer; }
+  .rn-my-rently:hover { background: var(--magenta-dark); }
+  .rn-logout { background: none; border: none; color: var(--ink-soft); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .rn-main { max-width: 1160px; margin: 0 auto; padding: 0 24px 90px; }
+  .rn-btn { font-family: 'Inter'; font-weight: 600; font-size: 15px; border-radius: 10px; border: none; padding: 13px 22px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+  .rn-btn-primary { background: var(--magenta); color: #fff; }
+  .rn-btn-primary:hover { background: var(--magenta-dark); }
+  .rn-btn-primary:disabled { background: var(--ink-faint); cursor: not-allowed; }
+  .rn-btn-dark { background: var(--ink); color: var(--cream); }
+  .rn-btn-ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); }
+  .rn-btn-ghost:hover { background: var(--ink); color: var(--cream); }
+  .rn-hero { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; padding: 60px 0 30px; align-items: center; }
+  .rn-eyebrow-row { display: flex; align-items: center; gap: 10px; color: var(--ink-soft); font-size: 14px; font-weight: 600; margin-bottom: 18px; }
+  .rn-hero h1 { font-size: 56px; line-height: 0.98; margin: 0 0 22px; }
+  .rn-hero p.lead { font-size: 18px; color: var(--ink-soft); max-width: 480px; margin: 0 0 30px; }
+  .rn-hero-actions { display: flex; gap: 12px; margin-bottom: 30px; flex-wrap: wrap; }
+  .rn-stat-row { display: flex; gap: 28px; flex-wrap: wrap; }
+  .rn-stat b { font-family: 'Big Shoulders Display'; font-weight: 800; font-size: 26px; display: block; }
+  .rn-stat span { font-size: 13px; color: var(--ink-soft); }
+  .rn-kit-panel { background: var(--ink); border-radius: 20px; padding: 26px; }
+  .rn-kit-label { color: var(--cream); font-size: 13px; font-weight: 600; opacity: 0.75; margin-bottom: 16px; display: block; }
+  .rn-kit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .rn-kit-chip { background: rgba(245,241,231,0.06); border: 1px solid rgba(245,241,231,0.14); border-radius: 12px; padding: 14px; color: var(--cream); }
+  .rn-kit-chip .rn-item-icon { background: rgba(214,51,108,0.18); color: #F3A9C4; margin-bottom: 10px; }
+  .rn-kit-chip-name { font-size: 13.5px; font-weight: 600; }
+  .rn-kit-chip-price { font-size: 12px; color: rgba(245,241,231,0.6); margin-top: 2px; }
+  .rn-kit-price-tag { margin-top: 14px; background: var(--magenta); border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; }
+  .rn-kit-price-tag b { color: #fff; font-family: 'Big Shoulders Display'; font-size: 22px; }
+  .rn-kit-price-tag span { color: rgba(255,255,255,0.85); font-size: 12.5px; }
+  .rn-semester-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: var(--cream-card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 20px; margin: 20px 0; flex-wrap: wrap; }
+  .rn-semester-bar b { font-family: 'Big Shoulders Display'; font-size: 15px; }
+  .rn-semester-inputs { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .rn-semester-inputs input[type=date] { font-family: 'Inter'; font-size: 13.5px; padding: 8px 10px; border-radius: 8px; border: 1.5px solid var(--line); background: #fff; color: var(--ink); }
+  .rn-link-btn { background: none; border: none; color: var(--magenta-dark); font-weight: 600; font-size: 13.5px; cursor: pointer; padding: 0; }
+  .rn-section { padding: 50px 0; border-top: 1px solid var(--line); }
+  .rn-section-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; margin-bottom: 32px; flex-wrap: wrap; }
+  .rn-section-head h2 { font-size: 32px; margin: 0; max-width: 620px; }
+  .rn-section-head p { color: var(--ink-soft); font-size: 15px; max-width: 340px; margin: 0; }
+  .rn-trust-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .rn-trust-card { border: 1px solid var(--line); border-radius: 16px; padding: 22px; background: #fff; }
+  .rn-trust-card .rn-item-icon { margin-bottom: 14px; }
+  .rn-trust-card h4 { font-size: 15.5px; margin: 0 0 6px; }
+  .rn-trust-card p { font-size: 13.5px; color: var(--ink-soft); margin: 0; }
+  .rn-flow { display: flex; align-items: stretch; justify-content: space-between; gap: 8px; }
+  .rn-flow-step { flex: 1; border: 1px solid var(--line); border-radius: 14px; padding: 18px 12px; background: #fff; text-align: center; font-size: 13.5px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+  .rn-flow-arrow { color: var(--ink-faint); flex-shrink: 0; align-self: center; }
+  .rn-layers { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .rn-layer-row { display: grid; grid-template-columns: 160px 1fr 220px; gap: 20px; padding: 22px 24px; align-items: center; }
+  .rn-layer-row + .rn-layer-row { border-top: 1px solid var(--line); }
+  .rn-layer-row.accent { background: var(--cream-card); }
+  .rn-layer-name { font-family: 'Big Shoulders Display'; font-weight: 800; font-size: 22px; }
+  .rn-layer-desc { color: var(--ink-soft); font-size: 14.5px; }
+  .rn-layer-role { font-size: 13px; font-weight: 600; color: var(--ink); text-align: right; }
+  .rn-teaser-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .rn-teaser-card { border: 1px solid var(--line); border-radius: 18px; padding: 26px; background: #fff; display: flex; flex-direction: column; }
+  .rn-teaser-card h3 { font-size: 21px; margin: 10px 0 8px; }
+  .rn-teaser-card p { color: var(--ink-soft); font-size: 14px; margin: 0 0 16px; flex-grow: 1; }
+  .rn-feed { border: 1px solid var(--line); border-radius: 16px; background: #fff; overflow: hidden; }
+  .rn-feed-row { display: flex; align-items: center; gap: 14px; padding: 16px 18px; }
+  .rn-feed-row + .rn-feed-row { border-top: 1px solid var(--line); }
+  .rn-feed-kind { font-size: 12px; font-weight: 600; color: var(--magenta-dark); display: flex; align-items: center; gap: 6px; }
+  .rn-verified { display: inline-flex; align-items: center; gap: 3px; color: var(--ink-soft); font-weight: 600; }
+  .rn-feed-title { font-size: 14.5px; font-weight: 600; margin-top: 2px; }
+  .rn-feed-meta { margin-left: auto; font-family: 'Big Shoulders Display'; font-size: 16px; color: var(--ink-soft); }
+  .rn-final-cta { display: flex; align-items: center; justify-content: space-between; background: var(--ink); border-radius: 20px; padding: 40px 44px; gap: 24px; flex-wrap: wrap; }
+  .rn-final-cta h3 { color: var(--cream); font-size: 30px; margin: 0 0 8px; max-width: 460px; }
+  .rn-final-cta p { color: rgba(245,241,231,0.65); margin: 0; font-size: 15px; }
+  .rn-page-head { padding: 36px 0 26px; }
+  .rn-page-head h1 { font-size: 40px; margin: 0 0 10px; }
+  .rn-page-head p { color: var(--ink-soft); font-size: 15.5px; max-width: 560px; margin: 0; }
+  .rn-item-icon { background: var(--magenta-tint); color: var(--magenta-dark); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .rn-tone-ink { background: rgba(21,46,41,0.08); color: var(--ink); }
+  .rn-build-grid { display: grid; grid-template-columns: 1fr 340px; gap: 32px; padding: 6px 0 60px; align-items: start; }
+  .rn-cat-row { border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; margin-bottom: 14px; background: #fff; }
+  .rn-cat-label { font-family: 'Big Shoulders Display'; font-weight: 800; font-size: 20px; margin-bottom: 14px; display: block; }
+  .rn-cat-items { display: flex; gap: 10px; flex-wrap: wrap; }
+  .rn-chip { display: flex; align-items: center; gap: 10px; border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 14px; cursor: pointer; }
+  .rn-chip:hover { border-color: var(--ink-faint); }
+  .rn-chip.selected { border-color: var(--magenta); background: var(--magenta-tint); }
+  .rn-chip-check { color: var(--ink-faint); display: flex; }
+  .rn-chip.selected .rn-chip-check { color: var(--magenta-dark); }
+  .rn-chip-name { font-size: 14px; font-weight: 600; display: block; }
+  .rn-chip-price { font-size: 12px; color: var(--ink-soft); }
+  .rn-chip-low { color: var(--magenta-dark); font-weight: 600; }
+  .rn-summary-card { border: 1px solid var(--line); border-radius: 16px; padding: 22px; background: var(--cream-card); position: sticky; top: 90px; }
+  .rn-summary-row { display: flex; justify-content: space-between; font-size: 14px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .rn-summary-row:last-of-type { border-bottom: none; }
+  .rn-summary-total { display: flex; justify-content: space-between; align-items: baseline; margin-top: 14px; padding-top: 14px; border-top: 1.5px solid var(--ink); }
+  .rn-summary-total b { font-family: 'Big Shoulders Display'; font-size: 26px; }
+  .rn-upsell { margin-top: 14px; padding: 12px 14px; background: #fff; border: 1px dashed var(--magenta); border-radius: 10px; font-size: 12.5px; color: var(--ink-soft); }
+  .rn-upsell button { margin-top: 8px; width: 100%; }
+  .rn-error { color: var(--magenta-dark); font-size: 13.5px; margin-top: 10px; font-weight: 600; }
+  .rn-note { color: var(--ink-soft); font-size: 13px; margin-top: 10px; }
+  .rn-booking-grid { display: grid; grid-template-columns: 1fr 340px; gap: 32px; padding: 16px 0 60px; align-items: start; }
+  .rn-form-card { border: 1px solid var(--line); border-radius: 16px; padding: 26px; background: #fff; }
+  .rn-form-card h3 { font-size: 20px; margin: 0 0 18px; }
+  .rn-field { margin-bottom: 16px; }
+  .rn-field label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; }
+  .rn-field input { width: 100%; font-family: 'Inter'; font-size: 14.5px; padding: 11px 13px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--cream); color: var(--ink); }
+  .rn-field input:focus { outline: 2px solid var(--magenta); outline-offset: 1px; border-color: var(--magenta); }
+  .rn-confirm-wrap { max-width: 520px; margin: 60px auto; text-align: center; }
+  .rn-confirm-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--magenta-tint); color: var(--magenta-dark); display: flex; align-items: center; justify-content: center; margin: 0 auto 22px; }
+  .rn-confirm-wrap h1 { font-size: 34px; margin: 0 0 10px; }
+  .rn-confirm-wrap p { color: var(--ink-soft); margin: 0 0 26px; }
+  .rn-receipt { border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; text-align: left; background: #fff; margin-bottom: 26px; }
+  .rn-receipt-row { display: flex; justify-content: space-between; font-size: 14px; padding: 7px 0; }
+  .rn-receipt-row b { font-family: 'Big Shoulders Display'; font-size: 16px; }
+  .rn-dash-greeting { font-size: 32px; margin: 0 0 6px; }
+  .rn-dash-sub { color: var(--ink-soft); font-size: 15px; margin: 0 0 28px; }
+  .rn-dash-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 36px; }
+  .rn-dash-card { border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; background: #fff; }
+  .rn-dash-card.muted { opacity: 0.55; }
+  .rn-dash-card .rn-item-icon { margin-bottom: 14px; }
+  .rn-dash-card b { font-family: 'Big Shoulders Display'; font-size: 19px; display: block; }
+  .rn-dash-card span { font-size: 12.5px; color: var(--ink-soft); }
+  .rn-table-wrap { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: #fff; overflow-x: auto; }
+  table.rn-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.rn-table th { text-align: left; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); padding: 13px 18px; background: var(--cream-card); white-space: nowrap; }
+  table.rn-table td { padding: 14px 18px; border-top: 1px solid var(--line); vertical-align: middle; }
+  .rn-status { font-size: 12.5px; font-weight: 600; padding: 5px 11px; border-radius: 999px; display: inline-block; white-space: nowrap; }
+  .rn-status-pending { background: #F3E3C4; color: #8A6116; }
+  .rn-status-confirmed { background: #DCE7E0; color: #2C5E45; }
+  .rn-status-delivered { background: var(--magenta-tint); color: var(--magenta-dark); }
+  .rn-status-returned { background: #E4E4E0; color: var(--ink-soft); }
+  .rn-status-requested { background: #F3E3C4; color: #8A6116; }
+  .rn-status-checked-in { background: var(--magenta-tint); color: var(--magenta-dark); }
+  .rn-status-scheduled { background: #DCE7E0; color: #2C5E45; }
+  .rn-status-completed { background: #E4E4E0; color: var(--ink-soft); }
+  .rn-item-tags { display: flex; gap: 5px; flex-wrap: wrap; max-width: 260px; }
+  .rn-item-tag { font-size: 11.5px; background: var(--cream-card); border-radius: 6px; padding: 3px 7px; color: var(--ink-soft); white-space: nowrap; }
+  .rn-status-select { font-family: 'Inter'; font-size: 13px; padding: 7px 9px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--cream); }
+  .rn-empty { text-align: center; padding: 70px 20px; color: var(--ink-soft); }
+  .rn-stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 30px; }
+  .rn-stat-card { border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; background: #fff; }
+  .rn-stat-card .rn-item-icon { margin-bottom: 14px; }
+  .rn-stat-card b { font-family: 'Big Shoulders Display'; font-size: 32px; display: block; }
+  .rn-stat-card span { font-size: 13.5px; color: var(--ink-soft); }
+  .rn-stat-card.warn b { color: var(--magenta-dark); }
+  .rn-admin-section { margin-bottom: 40px; }
+  .rn-admin-section h3 { font-size: 20px; margin: 0 0 16px; }
+  .rn-inv-row { display: flex; align-items: center; gap: 14px; }
+  .rn-stock-controls { display: flex; align-items: center; gap: 8px; }
+  .rn-stock-controls button { width: 28px; height: 28px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--cream); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--ink); }
+  .rn-stock-num { font-family: 'Big Shoulders Display'; font-size: 17px; min-width: 26px; text-align: center; }
+  .rn-simple-hero { padding: 40px 0 10px; max-width: 620px; }
+  .rn-simple-hero h1 { font-size: 42px; margin: 0 0 14px; }
+  .rn-simple-hero p { color: var(--ink-soft); font-size: 16px; margin: 0; }
+  .rn-price-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 30px 0 10px; }
+  .rn-price-card { border: 1px solid var(--line); border-radius: 16px; padding: 22px; background: #fff; }
+  .rn-price-card b { font-family: 'Big Shoulders Display'; font-size: 24px; display: block; margin-bottom: 4px; }
+  .rn-price-card span { font-size: 13.5px; color: var(--ink-soft); }
+  .rn-circles-head { background: var(--ink); border-radius: 20px; padding: 32px 34px; color: var(--cream); margin-bottom: 28px; }
+  .rn-circles-head b { font-family: 'Big Shoulders Display'; font-size: 28px; display: block; margin-bottom: 4px; }
+  .rn-circles-head span { color: rgba(245,241,231,0.65); font-size: 14px; }
+  .rn-tag-row { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .rn-tag { background: rgba(245,241,231,0.12); border: 1px solid rgba(245,241,231,0.25); color: var(--cream); font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: 999px; }
+  .rn-auth-wrap { max-width: 400px; margin: 50px auto; border: 1px solid var(--line); border-radius: 18px; padding: 30px; background: #fff; }
+  .rn-acct-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; margin-bottom: 20px; }
+  .rn-acct-card { border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: #fff; }
+  .rn-acct-card h3 { font-size: 17px; margin: 0 0 16px; }
+  .rn-acct-info-row { display: flex; justify-content: space-between; font-size: 13.5px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .rn-acct-info-row:last-child { border-bottom: none; }
+  .rn-acct-info-row span:first-child { color: var(--ink-soft); }
+  .rn-acct-info-row span:last-child { font-weight: 600; }
+  .rn-role-badge { text-transform: capitalize; background: var(--cream-card); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+  .rn-auth-wrap h1 { font-size: 28px; margin: 0 0 6px; }
+  .rn-auth-wrap p { color: var(--ink-soft); font-size: 14px; margin: 0 0 22px; }
+  .rn-auth-toggle { display: flex; gap: 6px; margin-top: 16px; font-size: 13.5px; color: var(--ink-soft); }
+  .rn-footer { border-top: 1px solid var(--line); padding: 30px 24px; display: flex; justify-content: space-between; align-items: center; color: var(--ink-soft); font-size: 13px; max-width: 1160px; margin: 0 auto; flex-wrap: wrap; gap: 10px; }
+  .rn-loading { text-align: center; padding: 80px 20px; color: var(--ink-soft); }
+  .rn-burger { display: none; background: none; border: none; cursor: pointer; color: var(--ink); padding: 6px; flex-shrink: 0; }
+
+  /* ---- Tablet / small desktop ---- */
+  @media (max-width: 880px) {
+    .rn-hero { grid-template-columns: 1fr; padding-top: 30px; gap: 32px; }
+    .rn-hero h1 { font-size: 38px; }
+    .rn-trust-grid { grid-template-columns: 1fr 1fr; }
+    .rn-flow { flex-direction: column; }
+    .rn-flow-arrow { transform: rotate(90deg); align-self: center; }
+    .rn-layer-row { grid-template-columns: 1fr; gap: 6px; }
+    .rn-layer-role { text-align: left; }
+    .rn-teaser-row { grid-template-columns: 1fr; }
+    .rn-build-grid, .rn-booking-grid { grid-template-columns: 1fr; }
+    .rn-summary-card { position: static; }
+    .rn-dash-grid { grid-template-columns: 1fr 1fr; }
+    .rn-stats-row { grid-template-columns: 1fr; }
+    .rn-price-row { grid-template-columns: 1fr; }
+    .rn-final-cta { flex-direction: column; align-items: flex-start; }
+  }
+
+  /* ---- Phone: collapse nav into a menu ---- */
+  @media (max-width: 700px) {
+    .rn-header-inner { padding: 12px 16px; flex-wrap: nowrap; position: relative; }
+    .rn-burger { display: flex; order: 3; }
+    .rn-header-right { order: 2; margin-left: auto; gap: 6px; }
+    .rn-nav {
+      display: none; position: absolute; top: 100%; left: 0; right: 0;
+      background: var(--cream); border-bottom: 1px solid var(--line);
+      flex-direction: column; align-items: stretch; gap: 2px;
+      padding: 8px 16px 16px; box-shadow: 0 12px 20px rgba(21,46,41,0.08);
+    }
+    .rn-nav.open { display: flex; }
+    .rn-nav-btn { text-align: left; padding: 12px 10px; font-size: 15.5px; }
+    .rn-my-rently { font-size: 12.5px; padding: 8px 12px; }
+    .rn-logout { font-size: 11.5px; }
+  }
+
+  /* ---- Small phone: tighten type & spacing ---- */
+  @media (max-width: 600px) {
+    .rn-main { padding: 0 16px 60px; }
+    .rn-hero { padding: 24px 0 20px; }
+    .rn-hero h1 { font-size: 32px; }
+    .rn-hero p.lead { font-size: 16px; }
+    .rn-eyebrow-row { font-size: 12.5px; }
+    .rn-hero-actions { flex-direction: column; align-items: stretch; }
+    .rn-hero-actions .rn-btn { justify-content: center; width: 100%; }
+    .rn-stat-row { gap: 16px 24px; }
+    .rn-stat b { font-size: 21px; }
+    .rn-kit-panel { padding: 20px; }
+    .rn-kit-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .rn-kit-chip { padding: 10px; }
+    .rn-kit-price-tag { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .rn-semester-bar { flex-direction: column; align-items: stretch; padding: 14px 16px; }
+    .rn-semester-inputs { justify-content: space-between; }
+    .rn-semester-inputs input[type=date] { flex: 1; min-width: 0; }
+    .rn-section { padding: 34px 0; }
+    .rn-section-head h2 { font-size: 25px; }
+    .rn-section-head p { max-width: 100%; }
+    .rn-trust-grid { grid-template-columns: 1fr; }
+    .rn-page-head { padding: 24px 0 20px; }
+    .rn-page-head h1 { font-size: 30px; }
+    .rn-cat-row { padding: 16px; }
+    .rn-cat-items { gap: 8px; }
+    .rn-chip { padding: 10px 12px; width: 100%; }
+    .rn-dash-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .rn-acct-grid { grid-template-columns: 1fr; }
+    .rn-dash-greeting { font-size: 25px; }
+    .rn-final-cta { padding: 28px 22px; }
+    .rn-final-cta h3 { font-size: 23px; }
+    .rn-final-cta .rn-btn { width: 100%; justify-content: center; }
+    .rn-circles-head { padding: 24px 22px; }
+    .rn-circles-head b { font-size: 22px; }
+    .rn-simple-hero h1 { font-size: 32px; }
+    .rn-confirm-wrap { margin: 36px auto; }
+    .rn-confirm-wrap h1 { font-size: 27px; }
+    .rn-auth-wrap { margin: 30px auto; padding: 22px; }
+    .rn-footer { flex-direction: column; align-items: flex-start; padding: 24px 16px; }
+    table.rn-table { font-size: 13px; }
+    table.rn-table th, table.rn-table td { padding: 11px 12px; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const SUPABASE_URL = "https://vbkmzsneryyjtjmjeynj.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZia216c25lcnl5anRqbWpleW5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMzM4MDcsImV4cCI6MjEwNDYwOTgwN30.P6QJkXdaeRCrdBvwqdhincaUmWadxusDCVEqQ-GT2Jw";
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const { useState, useEffect } = React;
+const h = React.createElement;
+
+const ITEM_DEFS = {
+  mattress: { name: "Mattress topper", icon: "bed", blurb: "High-density foam, single cot size 36\" x 75\" x 2\" \u2014 fits standard hostel cots." },
+  table:    { name: "Study table",     icon: "table", blurb: "Foldable, 2.5 ft x 1.5 ft \u2014 sized for shared hostel rooms." },
+  lamp:     { name: "Study lamp",      icon: "lamp", blurb: "Flexible-neck LED, USB-rechargeable, two brightness settings." },
+  cycle:    { name: "Cycle",           icon: "bike", blurb: "Single-speed campus cycle with a combination lock included." },
+  storage:  { name: "Storage unit",    icon: "archive", blurb: "Stackable fabric unit, cleared for hostel inspection." },
+  iron:     { name: "Iron",            icon: "zap", blurb: "1000W dry iron, complies with hostel power limits." },
+};
+const CATEGORIES = [
+  { key: "sleep", label: "Sleep", itemIds: ["mattress"] },
+  { key: "study", label: "Study", itemIds: ["table", "lamp"] },
+  { key: "move", label: "Move", itemIds: ["cycle"] },
+  { key: "store", label: "Store", itemIds: ["storage"] },
+  { key: "care", label: "Care", itemIds: ["iron"] },
+];
+const BUNDLE_PRICE = 600;
+const LOW_STOCK = 30;
+const STATUSES = ["Pending", "Confirmed", "Delivered", "Returned"];
+const STORAGE_STATUSES = ["Requested", "Checked in", "Returned"];
+const MOVE_STATUSES = ["Requested", "Scheduled", "Completed"];
+// Placeholder block names \u2014 tell Rently support your campus's real hostel block names to swap these in.
+const HOSTEL_BLOCKS = ["Hostel A", "Hostel B", "Hostel C", "Hostel D", "Hostel E"];
+const DELIVERY_SLOTS = ["Morning \u00b7 10:00 AM \u2013 1:00 PM", "Afternoon \u00b7 2:00 PM \u2013 5:00 PM"];
+const DAMAGE_POLICY = [
+  { h: "Refundable deposit", p: "A refundable deposit is held per item at booking and released in full once everything is returned in its original condition." },
+  { h: "Normal wear", p: "Ordinary signs of use \u2014 minor scuffs, faded fabric \u2014 are expected and never charged." },
+  { h: "Damage or loss", p: "Breakage, missing parts, or unreturned items are charged at a fixed repair/replacement rate, shown per item before you confirm a booking, never negotiated after the fact." },
+];
+const TRUST_POINTS = [
+  { icon: "shield", title: "Partner-backed", desc: "Every item comes through an established rental partner \u2014 not an anonymous seller on a group chat." },
+  { icon: "fileCheck", title: "Damage protection", desc: "Fixed policies on wear, damage and deposits, shown before you book, not negotiated after." },
+  { icon: "truck", title: "Campus delivery", desc: "Delivered and collected in a coordinated campus window \u2014 not a random courier at a random time." },
+  { icon: "userCheck", title: "Verified students", desc: "Every booking is tied to a verified campus account, so deliveries go to the right room, every time." },
+];
+const DELIVERY_STEPS = ["Students book", "Rently aggregates demand", "Partner prepares inventory", "One campus delivery", "Hostel blocks receive orders"];
+const CIRCLES_FEED = [
+  { icon: "clipboard", kind: "Announcement", title: "Hostel Wi-Fi maintenance window", meta: "Today \u00b7 9\u201311 PM" },
+  { icon: "bike", kind: "Renting", title: "Cycle", meta: "\u20b9100/week" },
+  { icon: "mic", kind: "Event", title: "TechnoVee \u2014 speakers & projector booked", meta: "Tomorrow \u00b7 6 PM" },
+];
+
+const ICON_PATHS = {
+  menu: '<line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>',
+  x: '<line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>',
+  arrowRight: '<line x1="4" y1="12" x2="20" y2="12"/><polyline points="13 5 20 12 13 19"/>',
+  chevronRight: '<polyline points="9 6 15 12 9 18"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  circle: '<circle cx="12" cy="12" r="9"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/>',
+  mapPin: '<path d="M12 21s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/>',
+  bed: '<path d="M3 18v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6"/><path d="M3 18v2"/><path d="M21 18v2"/><path d="M3 12V8a2 2 0 0 1 2-2h4v6"/>',
+  table: '<line x1="3" y1="8" x2="21" y2="8"/><line x1="6" y1="8" x2="6" y2="20"/><line x1="18" y1="8" x2="18" y2="20"/>',
+  lamp: '<path d="M8 4h8l3 8H5l3-8z"/><line x1="12" y1="12" x2="12" y2="19"/><line x1="8" y1="21" x2="16" y2="21"/>',
+  bike: '<circle cx="6" cy="17" r="3.5"/><circle cx="18" cy="17" r="3.5"/><path d="M6 17l4-9h4l3 5"/><path d="M10 8h3"/>',
+  archive: '<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M4 8v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8"/><line x1="10" y1="13" x2="14" y2="13"/>',
+  zap: '<polygon points="13 3 5 14 11 14 10 21 19 10 13 10 13 3"/>',
+  shield: '<path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z"/>',
+  fileCheck: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><polyline points="14 3 14 8 19 8"/><polyline points="9.5 14 11.5 16 15 12"/>',
+  truck: '<rect x="1" y="7" width="13" height="10" rx="1"/><path d="M14 10h4l3 3v4h-7z"/><circle cx="5.5" cy="18.5" r="1.8"/><circle cx="16.5" cy="18.5" r="1.8"/>',
+  userCheck: '<circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 4.2 1.7"/><polyline points="16 13 18 15 22 11"/>',
+  bookOpen: '<path d="M3 5c3-1.5 6-1.5 9 0v14c-3-1.5-6-1.5-9 0V5z"/><path d="M21 5c-3-1.5-6-1.5-9 0v14c3-1.5 6-1.5 9 0V5z"/>',
+  mic: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>',
+  users: '<circle cx="8" cy="8" r="3.5"/><path d="M1.5 21v-1a6.5 6.5 0 0 1 13 0v1"/><path d="M15.5 5.5a3.5 3.5 0 0 1 0 6.8"/><path d="M17.5 21v-1a6.4 6.4 0 0 0-3.5-5.7"/>',
+  grid: '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>',
+  plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  minus: '<line x1="5" y1="12" x2="19" y2="12"/>',
+  alert: '<path d="M12 3l10 18H2L12 3z"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="12" y1="17" x2="12" y2="17.01"/>',
+  boxes: '<path d="M3 8l6-3 6 3-6 3-6-3z"/><path d="M3 8v7l6 3 6-3V8"/><path d="M15 11l6-3v7l-6 3"/><path d="M9 11v7"/>',
+  repeat: '<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+  clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="4" rx="1"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="16" y2="15"/>',
+};
+function Icon(name, size, color) {
+  size = size || 18;
+  return h("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: color || "currentColor", strokeWidth: 1.75, strokeLinecap: "round", strokeLinejoin: "round", dangerouslySetInnerHTML: { __html: ICON_PATHS[name] || "" } });
+}
+function ItemIcon(iconName, size, tone) {
+  size = size || 20;
+  return h("span", { className: "rn-item-icon " + (tone === "ink" ? "rn-tone-ink" : ""), style: { width: size * 1.9, height: size * 1.9 } }, Icon(iconName, size));
+}
+function money(n) { return "\u20b9" + Number(n).toLocaleString("en-IN"); }
+function formatDate(iso, withYear) {
+  if (!iso) return "";
+  const d = new Date(iso + "T00:00:00");
+  const opts = { day: "numeric", month: "long" };
+  if (withYear) opts.year = "numeric";
+  return d.toLocaleDateString("en-IN", opts);
+}
+function greetingWord() {
+  const hr = new Date().getHours();
+  if (hr < 12) return "Good morning";
+  if (hr < 17) return "Good afternoon";
+  return "Good evening";
+}
+function Logo(size) {
+  size = size || 34;
+  return h("div", { className: "rn-logo" },
+    h("span", { className: "rn-logo-badge", style: { width: size, height: size, fontSize: size * 0.52 } }, "r", h("span", { className: "rn-dot" }, ".")),
+    h("span", { className: "rn-logo-word" }, "rently", h("span", { className: "rn-dot" }, "."))
+  );
+}
+function StatusPill(status) {
+  return h("span", { className: "rn-status rn-status-" + status.toLowerCase().replace(/\s+/g, "-") }, status);
+}
+function FeatureRows(rows) {
+  return h("div", { className: "rn-layers" }, rows.map((r, i) =>
+    h("div", { key: r.name, className: "rn-layer-row " + (i === 0 ? "accent" : "") },
+      h("div", { className: "rn-layer-name" }, r.name),
+      h("div", { className: "rn-layer-desc" }, r.desc),
+      h("div", { className: "rn-layer-role" }, r.role)
+    )
+  ));
+}
+function Feed(items, verified) {
+  return h("div", { className: "rn-feed" }, items.map((f, i) =>
+    h("div", { key: i, className: "rn-feed-row" },
+      ItemIcon(f.icon, 16),
+      h("div", null,
+        h("div", { className: "rn-feed-kind" }, f.kind, verified && h("span", { className: "rn-verified" }, Icon("userCheck", 11), " Verified")),
+        h("div", { className: "rn-feed-title" }, f.title)
+      ),
+      h("div", { className: "rn-feed-meta" }, f.meta)
+    )
+  ));
+}
+
+function HostelField(block, room, onBlock, onRoom) {
+  return h(React.Fragment, null,
+    h("div", { className: "rn-field" }, h("label", null, "Hostel block"),
+      h("select", { className: "rn-status-select", style: { width: "100%", padding: "11px 13px" }, value: block, onChange: e => onBlock(e.target.value) },
+        h("option", { value: "" }, "Select block…"),
+        HOSTEL_BLOCKS.map(b => h("option", { key: b, value: b }, b))
+      )
+    ),
+    h("div", { className: "rn-field" }, h("label", null, "Room number"), h("input", { value: room, onChange: e => onRoom(e.target.value), placeholder: "e.g. 214" }))
+  );
+}
+function PolicyModal(open, onClose) {
+  if (!open) return null;
+  return h("div", { style: { position: "fixed", inset: 0, background: "rgba(21,46,41,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20 }, onClick: onClose },
+    h("div", { style: { background: "#fff", borderRadius: 16, padding: 28, maxWidth: 460, width: "100%" }, onClick: e => e.stopPropagation() },
+      h("h3", { style: { margin: "0 0 16px" } }, "Wear & damage policy"),
+      DAMAGE_POLICY.map(d => h("div", { key: d.h, style: { marginBottom: 14 } },
+        h("b", { style: { display: "block", fontSize: 14, marginBottom: 3 } }, d.h),
+        h("p", { style: { margin: 0, fontSize: 13.5, color: "var(--ink-soft)" } }, d.p)
+      )),
+      h("button", { className: "rn-btn rn-btn-dark", style: { width: "100%", justifyContent: "center", marginTop: 6 }, onClick: onClose }, "Close")
+    )
+  );
+}
+
+function App() {
+  const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [view, setView] = useState("home");
+  const [navOpen, setNavOpen] = useState(false);
+  const [cartIds, setCartIds] = useState([]);
+  const [inventory, setInventory] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [myBookings, setMyBookings] = useState([]);
+  const [storageBookings, setStorageBookings] = useState([]);
+  const [myStorage, setMyStorage] = useState([]);
+  const [moveBookings, setMoveBookings] = useState([]);
+  const [myMoves, setMyMoves] = useState([]);
+  const [bagSize, setBagSize] = useState("small");
+  const [dropOffDate, setDropOffDate] = useState("2026-11-30");
+  const [pickupDate, setPickupDate] = useState("2027-01-05");
+  const [storageMsg, setStorageMsg] = useState("");
+  const [moveType, setMoveType] = useState("move-in");
+  const [moveDate, setMoveDate] = useState("2026-07-15");
+  const [moveNotes, setMoveNotes] = useState("");
+  const [moveMsg, setMoveMsg] = useState("");
+  const [authMode, setAuthMode] = useState("signup");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authMsg, setAuthMsg] = useState("");
+  const [bookName, setBookName] = useState("");
+  const [bookRoom, setBookRoom] = useState("");
+  const [formError, setFormError] = useState("");
+  const [semStart, setSemStart] = useState("2026-07-15");
+  const [semEnd, setSemEnd] = useState("2026-11-30");
+  const [semEditing, setSemEditing] = useState(false);
+  const [lastBookingId, setLastBookingId] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [resetMsg, setResetMsg] = useState("");
+  const [acctName, setAcctName] = useState("");
+  const [acctRoom, setAcctRoom] = useState("");
+  const [acctPassword, setAcctPassword] = useState("");
+  const [acctMsg, setAcctMsg] = useState("");
+  const [acctSaving, setAcctSaving] = useState(false);
+  const [acctBlock, setAcctBlock] = useState("");
+  const [bookBlock, setBookBlock] = useState("");
+  const [deliverySlot, setDeliverySlot] = useState(DELIVERY_SLOTS[0]);
+  const [storageBlock, setStorageBlock] = useState("");
+  const [storageRoom, setStorageRoom] = useState("");
+  const [moveBlock, setMoveBlock] = useState("");
+  const [moveRoom, setMoveRoom] = useState("");
+  const [policyOpen, setPolicyOpen] = useState(false);
+
+  useEffect(() => {
+    db.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
+    const { data: sub } = db.auth.onAuthStateChange((_e, s) => {
+      setSession(s);
+      if (_e === "PASSWORD_RECOVERY") setRecoveryMode(true);
+    });
+    refreshInventory();
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (session) {
+      loadProfile();
+    } else {
+      setProfile(null);
+      setMyBookings([]);
+      setMyStorage([]);
+      setMyMoves([]);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    if (profile) {
+      setBookName(profile.full_name || "");
+      setBookRoom(profile.room_info || "");
+      setBookBlock(profile.hostel_block || "");
+      setAcctName(profile.full_name || "");
+      setAcctRoom(profile.room_info || "");
+      setAcctBlock(profile.hostel_block || "");
+      setStorageBlock(profile.hostel_block || "");
+      setStorageRoom(profile.room_info || "");
+      setMoveBlock(profile.hostel_block || "");
+      setMoveRoom(profile.room_info || "");
+      setSemStart(profile.semester_start || "2026-07-15");
+      setSemEnd(profile.semester_end || "2026-11-30");
+      if (profile.role === "admin") { refreshAllBookings(); refreshInventory(); refreshAllStorage(); refreshAllMoves(); }
+      else if (profile.role === "transporter") { refreshAllBookings(); refreshAllStorage(); refreshAllMoves(); }
+      else { refreshMyBookings(); refreshMyStorage(); refreshMyMoves(); }
+    }
+  }, [profile]);
+
+  async function loadProfile() {
+    const uid = session.user.id;
+    let { data } = await db.from("profiles").select("*").eq("id", uid).single();
+    setProfile(data);
+  }
+  async function refreshInventory() {
+    const { data } = await db.from("inventory").select("*").order("item_id");
+    if (data) setInventory(data);
+  }
+  async function refreshMyBookings() {
+    const { data } = await db.from("bookings").select("*").order("created_at", { ascending: false });
+    if (data) setMyBookings(data);
+  }
+  async function refreshAllBookings() {
+    const { data } = await db.from("bookings").select("*").order("created_at", { ascending: false });
+    if (data) setBookings(data);
+  }
+  async function refreshMyStorage() {
+    const { data } = await db.from("storage_bookings").select("*").order("created_at", { ascending: false });
+    if (data) setMyStorage(data);
+  }
+  async function refreshAllStorage() {
+    const { data } = await db.from("storage_bookings").select("*").order("created_at", { ascending: false });
+    if (data) setStorageBookings(data);
+  }
+  async function refreshMyMoves() {
+    const { data } = await db.from("move_bookings").select("*").order("created_at", { ascending: false });
+    if (data) setMyMoves(data);
+  }
+  async function refreshAllMoves() {
+    const { data } = await db.from("move_bookings").select("*").order("created_at", { ascending: false });
+    if (data) setMoveBookings(data);
+  }
+  async function submitStorageBooking(e) {
+    e.preventDefault();
+    if (!session) { setStorageMsg("Log in to request storage."); return; }
+    if (!storageBlock || !storageRoom.trim()) { setStorageMsg("Pick your hostel block and room number."); return; }
+    if (new Date(pickupDate) <= new Date(dropOffDate)) { setStorageMsg("Pickup date needs to be after drop-off."); return; }
+    setBusy(true);
+    const id = "STG-" + Math.floor(1000 + Math.random() * 9000);
+    const { error } = await db.from("storage_bookings").insert({
+      id, student_id: session.user.id, student_name: acctName || profile.full_name || "",
+      hostel_block: storageBlock, room_info: storageRoom.trim(),
+      bag_size: bagSize, drop_off_date: dropOffDate, pickup_date: pickupDate, status: "Requested",
+    });
+    setBusy(false);
+    if (error) { setStorageMsg("Couldn't submit: " + error.message); return; }
+    setStorageMsg("Storage request submitted.");
+    refreshMyStorage();
+  }
+  async function submitMoveBooking(e) {
+    e.preventDefault();
+    if (!session) { setMoveMsg("Log in to request a move."); return; }
+    if (!moveBlock || !moveRoom.trim()) { setMoveMsg("Pick your hostel block and room number."); return; }
+    setBusy(true);
+    const id = "MOV-" + Math.floor(1000 + Math.random() * 9000);
+    const { error } = await db.from("move_bookings").insert({
+      id, student_id: session.user.id, student_name: acctName || profile.full_name || "",
+      hostel_block: moveBlock, room_info: moveRoom.trim(),
+      move_type: moveType, move_date: moveDate, notes: moveNotes.trim(), status: "Requested",
+    });
+    setBusy(false);
+    if (error) { setMoveMsg("Couldn't submit: " + error.message); return; }
+    setMoveMsg("Move request submitted.");
+    setMoveNotes("");
+    refreshMyMoves();
+  }
+  async function updateStorageStatus(id, status) {
+    const { error } = await db.from("storage_bookings").update({ status }).eq("id", id);
+    if (error) { alert("Couldn't update: " + error.message); return; }
+    refreshAllStorage();
+  }
+  async function updateMoveStatus(id, status) {
+    const { error } = await db.from("move_bookings").update({ status }).eq("id", id);
+    if (error) { alert("Couldn't update: " + error.message); return; }
+    refreshAllMoves();
+  }
+
+  function stockOf(id) { const row = inventory.find(i => i.item_id === id); return row ? row.stock : 0; }
+  function priceOf(id) { const row = inventory.find(i => i.item_id === id); return row ? row.price : 0; }
+  const isBundle = cartIds.length === Object.keys(ITEM_DEFS).length;
+  const cartTotal = isBundle ? BUNDLE_PRICE : cartIds.reduce((s, id) => s + priceOf(id), 0);
+  const allItemsSum = Object.keys(ITEM_DEFS).reduce((s, id) => s + priceOf(id), 0);
+  const bundleSavings = Math.max(0, allItemsSum - BUNDLE_PRICE);
+  const semesterLabel = formatDate(semStart) + " \u2013 " + formatDate(semEnd, true);
+
+  function goTo(v) { setView(v); setNavOpen(false); window.scrollTo && window.scrollTo({ top: 0, behavior: "instant" }); }
+  function toggleItem(id) { setCartIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]); }
+
+  async function handleAuth(e) {
+    e.preventDefault();
+    setAuthMsg(""); setBusy(true);
+    if (authMode === "signup") {
+      const { data, error } = await db.auth.signUp({ email: authEmail, password: authPassword });
+      setBusy(false);
+      if (error) setAuthMsg(error.message);
+      else if (data.session) goTo("home"); // email confirmation is off on this project — logged in immediately
+      else setAuthMsg("Check your inbox to confirm your email, then log in below.");
+    } else {
+      const { error } = await db.auth.signInWithPassword({ email: authEmail, password: authPassword });
+      setBusy(false);
+      if (error) setAuthMsg(error.message);
+      else goTo("home");
+    }
+  }
+  async function handleLogout() { await db.auth.signOut(); goTo("home"); }
+
+  async function requestPasswordReset() {
+    if (!authEmail.trim()) { setAuthMsg("Enter your email above first, then tap \u201cForgot password\u201d again."); return; }
+    setBusy(true);
+    const { error } = await db.auth.resetPasswordForEmail(authEmail.trim(), { redirectTo: window.location.origin + window.location.pathname });
+    setBusy(false);
+    setAuthMsg(error ? error.message : "Check your inbox for a reset link.");
+  }
+  async function submitNewPassword(e) {
+    e.preventDefault();
+    if (newPassword.length < 6) { setResetMsg("Password needs to be at least 6 characters."); return; }
+    setBusy(true);
+    const { error } = await db.auth.updateUser({ password: newPassword });
+    setBusy(false);
+    if (error) { setResetMsg(error.message); return; }
+    setRecoveryMode(false);
+    setNewPassword("");
+    setResetMsg("");
+    goTo("home");
+  }
+
+  async function saveAccountProfile(e) {
+    e.preventDefault();
+    setAcctSaving(true); setAcctMsg("");
+    const { error } = await db.from("profiles").update({ full_name: acctName.trim(), room_info: acctRoom.trim(), hostel_block: acctBlock }).eq("id", session.user.id);
+    setAcctSaving(false);
+    if (error) { setAcctMsg("Couldn't save: " + error.message); return; }
+    setProfile(p => ({ ...p, full_name: acctName.trim(), room_info: acctRoom.trim(), hostel_block: acctBlock }));
+    setAcctMsg("Saved.");
+  }
+  async function changeAccountPassword(e) {
+    e.preventDefault();
+    if (acctPassword.length < 6) { setAcctMsg("New password needs to be at least 6 characters."); return; }
+    setAcctSaving(true); setAcctMsg("");
+    const { error } = await db.auth.updateUser({ password: acctPassword });
+    setAcctSaving(false);
+    if (error) { setAcctMsg(error.message); return; }
+    setAcctPassword("");
+    setAcctMsg("Password updated.");
+  }
+
+  async function saveSemester() {
+    setSemEditing(false);
+    if (!session) return;
+    const { error } = await db.from("profiles").update({ semester_start: semStart, semester_end: semEnd }).eq("id", session.user.id);
+    if (error) alert("Couldn't save your semester dates: " + error.message);
+  }
+
+  async function confirmBooking() {
+    if (!session) { setFormError("Log in or create an account to finish booking."); return; }
+    if (!bookName.trim() || !bookBlock || !bookRoom.trim()) { setFormError("Add your name, hostel block and room number to start the booking."); return; }
+    if (cartIds.length === 0) { setFormError("Pick at least one item before confirming."); return; }
+    setBusy(true);
+    let error, id;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      id = "RNT-" + Math.floor(1000 + Math.random() * 9000);
+      const res = await db.from("bookings").insert({
+        id, student_id: session.user.id, student_name: bookName.trim(),
+        hostel_block: bookBlock, room_info: bookRoom.trim(), delivery_slot: deliverySlot,
+        items: cartIds, semester_start: semStart, semester_end: semEnd, status: "Pending",
+      });
+      error = res.error;
+      if (!error || error.code !== "23505") break; // 23505 = duplicate booking id, try a fresh one
+    }
+    if (error) { setBusy(false); setFormError("Couldn't complete the booking: " + error.message); return; }
+    const { error: profileErr } = await db.from("profiles").update({ full_name: bookName.trim(), room_info: bookRoom.trim(), hostel_block: bookBlock }).eq("id", session.user.id);
+    if (profileErr) console.error("Profile update failed:", profileErr.message);
+    for (const cid of cartIds) {
+      const cur = stockOf(cid);
+      const { error: stockErr } = await db.from("inventory").update({ stock: Math.max(0, cur - 1) }).eq("item_id", cid);
+      if (stockErr) console.error("Stock update failed for", cid, stockErr.message);
+    }
+    await refreshInventory();
+    await refreshMyBookings();
+    setLastBookingId(id);
+    setCartIds([]);
+    setFormError("");
+    setBusy(false);
+    goTo("confirmation");
+  }
+  async function updateStatus(id, status) {
+    const { error } = await db.from("bookings").update({ status }).eq("id", id);
+    if (error) { alert("Couldn't update that booking: " + error.message); return; }
+    refreshAllBookings();
+  }
+  async function adjustStock(itemId, delta) {
+    const cur = stockOf(itemId);
+    const { error } = await db.from("inventory").update({ stock: Math.max(0, cur + delta) }).eq("item_id", itemId);
+    if (error) { alert("Couldn't update stock: " + error.message); return; }
+    refreshInventory();
+  }
+
+  const myLatest = myBookings[0] || null;
+  const cycleDaysLeft = Math.max(0, Math.ceil((new Date(semEnd + "T00:00:00") - new Date()) / 86400000));
+  const totalBookings = bookings.length;
+  const activeRentals = bookings.filter(b => b.status === "Confirmed" || b.status === "Delivered").length;
+  const lowStockItems = inventory.filter(i => i.stock < LOW_STOCK);
+
+  const mainNav = [
+    { id: "home", label: "Home" }, { id: "build", label: "Rent" },
+    { id: "circles", label: "Circles" }, { id: "storage", label: "Storage" }, { id: "moves", label: "Moves" },
+  ];
+
+  function SemesterBar(compact) {
+    return h("div", { className: "rn-semester-bar" },
+      h("div", null, h("b", null, "Your semester"), !semEditing && h("span", { style: { marginLeft: 10, color: "var(--ink-soft)", fontSize: 13.5 } }, semesterLabel)),
+      semEditing
+        ? h("div", { className: "rn-semester-inputs" },
+            h("input", { type: "date", value: semStart, onChange: e => setSemStart(e.target.value) }),
+            Icon("arrowRight", 14, "var(--ink-faint)"),
+            h("input", { type: "date", value: semEnd, onChange: e => setSemEnd(e.target.value) }),
+            h("button", { className: "rn-link-btn", onClick: saveSemester }, "Done")
+          )
+        : h("button", { className: "rn-link-btn", onClick: () => setSemEditing(true) }, compact ? "Change dates" : "Not moving in July? Change dates")
+    );
+  }
+
+  function Header() {
+    const role = profile && profile.role;
+    const acctView = role === "admin" ? "admin" : role === "transporter" ? "transport" : "dashboard";
+    const acctLabel = role === "admin" ? "Admin dashboard" : role === "transporter" ? "Transport" : "My Rently";
+    const rightAction = !authReady ? null
+      : session
+        ? h(React.Fragment, null,
+            h("button", { className: "rn-my-rently", onClick: () => goTo(acctView) }, acctLabel),
+            h("button", { className: "rn-logout", onClick: () => goTo("account") }, "Account"),
+            h("button", { className: "rn-logout", onClick: handleLogout }, "Log out")
+          )
+        : h("button", { className: "rn-my-rently", onClick: () => goTo("auth") }, "Log in");
+    return h("header", { className: "rn-header" },
+      h("div", { className: "rn-header-inner" },
+        h("div", { onClick: () => goTo("home") }, Logo()),
+        h("nav", { className: "rn-nav " + (navOpen ? "open" : "") }, mainNav.map(n => h("button", { key: n.id, className: "rn-nav-btn " + (view === n.id ? "active" : ""), onClick: () => goTo(n.id) }, n.label))),
+        h("div", { className: "rn-header-right" }, rightAction),
+        h("button", { className: "rn-burger", onClick: () => setNavOpen(v => !v), "aria-label": "Menu" }, Icon(navOpen ? "x" : "menu", 22))
+      )
+    );
+  }
+
+  function HomeView() {
+    return h(React.Fragment, null,
+      h("section", { className: "rn-hero" },
+        h("div", null,
+          h("div", { className: "rn-eyebrow-row" }, Icon("mapPin", 15), " Built for hostel campuses, starting with one pilot campus"),
+          h("h1", { className: "rn-display" }, "Set up your room", h("br"), "without owning any of it."),
+          h("p", { className: "lead" }, "Rently delivers a brand-insured room-setup bundle on move-in day and collects it on move-out day \u2014 so you stop buying things you'll throw out in four months."),
+          h("div", { className: "rn-hero-actions" },
+            h("button", { className: "rn-btn rn-btn-primary", onClick: () => goTo("build") }, "Build my room", Icon("arrowRight", 16)),
+            h("button", { className: "rn-btn rn-btn-ghost", onClick: () => goTo("build") }, "Explore rentals")
+          ),
+          h("div", { className: "rn-stat-row" },
+            h("div", { className: "rn-stat" }, h("b", null, money(BUNDLE_PRICE)), h("span", null, "per semester, full bundle")),
+            h("div", { className: "rn-stat" }, h("b", null, "6 items"), h("span", null, "hostel-compliant, no large furniture")),
+            h("div", { className: "rn-stat" }, h("b", null, "2 dates"), h("span", null, "delivered and collected for you"))
+          )
+        ),
+        h("div", { className: "rn-kit-panel" },
+          h("span", { className: "rn-kit-label" }, "What's in the room-setup bundle"),
+          h("div", { className: "rn-kit-grid" }, Object.keys(ITEM_DEFS).map(id =>
+            h("div", { key: id, className: "rn-kit-chip" }, ItemIcon(ITEM_DEFS[id].icon, 17), h("div", { className: "rn-kit-chip-name" }, ITEM_DEFS[id].name), h("div", { className: "rn-kit-chip-price" }, money(priceOf(id)), " alone"))
+          )),
+          h("div", { className: "rn-kit-price-tag" }, h("div", null, h("b", null, money(BUNDLE_PRICE)), h("span", null, " full bundle, one semester")), bundleSavings > 0 && h("span", null, "save ", money(bundleSavings)))
+        )
+      ),
+      SemesterBar(false),
+      h("section", { className: "rn-section" },
+        h("div", { className: "rn-section-head" }, h("h2", { className: "rn-display" }, "Rent without the rental anxiety."), h("p", null, "The questions students actually have before they book, answered up front.")),
+        h("div", { className: "rn-trust-grid" }, TRUST_POINTS.map(t => h("div", { key: t.title, className: "rn-trust-card" }, ItemIcon(t.icon, 18, "ink"), h("h4", null, t.title), h("p", null, t.desc),
+          t.title === "Damage protection" && h("button", { className: "rn-link-btn", style: { marginTop: 8 }, onClick: () => setPolicyOpen(true) }, "View wear & damage policy")
+        )))
+      ),
+      h("section", { className: "rn-section" },
+        h("div", { className: "rn-section-head" }, h("h2", { className: "rn-display" }, "One campus. One delivery window."), h("p", null, "Individual orders only make sense because Rently aggregates them into a single trip.")),
+        h("div", { className: "rn-flow" }, DELIVERY_STEPS.flatMap((s, i) => {
+          const nodes = [h("div", { key: s, className: "rn-flow-step" }, s)];
+          if (i < DELIVERY_STEPS.length - 1) nodes.push(h(React.Fragment, {key: s+"a"}, Icon("arrowRight", 18, "var(--ink-faint)")));
+          return nodes;
+        }))
+      ),
+      h("section", { className: "rn-section" },
+        h("div", { className: "rn-section-head" }, h("h2", { className: "rn-display" }, "One platform, built around Core.")),
+        FeatureRows([
+          { name: "Core", desc: "Brand-backed room-setup bundles, insured by the rental partner.", role: "Main way students use Rently" },
+          { name: "Circles", desc: "Batch group chats and event boards that keep you connected between rental cycles.", role: "Community, not a transaction" },
+        ])
+      ),
+      h("section", { className: "rn-section" },
+        h("div", { className: "rn-section-head" }, h("h2", { className: "rn-display" }, "The campus, in one feed.")),
+        h("div", { className: "rn-teaser-row" },
+          h("div", { className: "rn-teaser-card" }, Icon("users", 22), h("h3", null, "Circles keeps you in the loop between rentals."), h("p", null, "Batch group chats, a buy/sell board and event pages, all tied to your campus and hostel block."), Feed(CIRCLES_FEED), h("div", { style: { marginTop: 14 } }, h("button", { className: "rn-btn rn-btn-ghost", onClick: () => goTo("circles") }, "Open Circles", Icon("chevronRight", 15)))),
+          h("div", { className: "rn-teaser-card" }, Icon("mic", 22), h("h3", null, "Running a college event?"), h("p", null, "Rent speakers, projectors, decor and more for club events, without your club owning any of it."), h("div", { style: { marginTop: "auto" } }, h("button", { className: "rn-btn rn-btn-ghost", onClick: () => goTo("circles") }, "Explore event rentals", Icon("chevronRight", 15))))
+        )
+      ),
+      h("section", { className: "rn-section", style: { borderTop: "none", paddingTop: 0 } },
+        h("div", { className: "rn-final-cta" },
+          h("div", null, h("h3", { className: "rn-display" }, "One campus. Everything you need for a room."), h("p", null, "Build your room now and it'll be waiting on your delivery day.")),
+          h("button", { className: "rn-btn rn-btn-primary", onClick: () => goTo("build") }, "Build my room", Icon("arrowRight", 16))
+        )
+      )
+    );
+  }
+
+  function BuildView() {
+    return h(React.Fragment, null,
+      h("div", { className: "rn-page-head" }, h("h1", { className: "rn-display" }, "Build your room"), h("p", null, "Pick what your room actually needs, category by category. Your price updates as you go.")),
+      SemesterBar(true),
+      h("div", { className: "rn-build-grid" },
+        h("div", null, CATEGORIES.map(cat => h("div", { key: cat.key, className: "rn-cat-row" },
+          h("span", { className: "rn-cat-label" }, cat.label),
+          h("div", { className: "rn-cat-items" }, cat.itemIds.map(id => {
+            const selected = cartIds.includes(id);
+            const stock = stockOf(id);
+            return h("div", { key: id, className: "rn-chip " + (selected ? "selected" : ""), onClick: () => toggleItem(id) },
+              h("span", { className: "rn-chip-check" }, Icon(selected ? "check" : "circle", 18)),
+              h("div", null,
+                h("span", { className: "rn-chip-name" }, ITEM_DEFS[id].name),
+                h("span", { className: "rn-chip-price" }, money(priceOf(id)), "/sem", stock < LOW_STOCK && h("span", { className: "rn-chip-low" }, " \u00b7 ", stock, " left")),
+                h("span", { style: { display: "block", fontSize: 11.5, color: "var(--ink-faint)", marginTop: 2, maxWidth: 220 } }, ITEM_DEFS[id].blurb)
+              )
+            );
+          }))
+        ))),
+        h("div", { className: "rn-summary-card" },
+          h("h3", { style: { fontSize: 17, margin: "0 0 14px" } }, "Your setup"),
+          cartIds.length === 0 && h("p", { style: { fontSize: 13.5, color: "var(--ink-soft)" } }, "Nothing picked yet \u2014 tap a category to start."),
+          cartIds.map(id => h("div", { key: id, className: "rn-summary-row" }, h("span", null, ITEM_DEFS[id].name), h("span", null, isBundle ? "\u2014" : money(priceOf(id))))),
+          h("div", { className: "rn-summary-total" },
+            h("span", null, "Total"),
+            isBundle && bundleSavings > 0
+              ? h("span", null, h("span", { style: { textDecoration: "line-through", color: "var(--ink-faint)", fontSize: 14, marginRight: 8 } }, money(allItemsSum)), h("b", null, money(cartTotal), "/sem"))
+              : h("b", null, money(cartTotal), "/sem")
+          ),
+          isBundle
+            ? h("p", { style: { fontSize: 12.5, color: "var(--magenta-dark)", fontWeight: 600, marginTop: 8 } }, "Full-bundle rate applied \u2014 you saved ", money(bundleSavings), ".")
+            : cartIds.length > 0 && h("div", { className: "rn-upsell" }, "Add the rest of the room for a flat rate.", h("button", { className: "rn-btn rn-btn-ghost", onClick: () => setCartIds(Object.keys(ITEM_DEFS)) }, "Add the full bundle for ", money(BUNDLE_PRICE))),
+          h("button", { className: "rn-link-btn", style: { marginTop: 10 }, onClick: () => setPolicyOpen(true) }, "View wear & damage policy"),
+          h("button", { className: "rn-btn rn-btn-primary", style: { width: "100%", justifyContent: "center", marginTop: 16 }, onClick: () => goTo("booking"), disabled: cartIds.length === 0 }, "Complete my room", Icon("arrowRight", 16))
+        )
+      )
+    );
+  }
+
+  function BookingView() {
+    return h("div", { className: "rn-booking-grid" },
+      h("div", { className: "rn-form-card" },
+        h("h3", null, "Booking details"),
+        !session && h("p", { className: "rn-note" }, "Log in or create an account below to finish booking \u2014 your selection will be waiting."),
+        !session && AuthForm({ compact: true }),
+        session && h(React.Fragment, null,
+          h("div", { className: "rn-field" }, h("label", null, "Full name"), h("input", { value: bookName, onChange: e => setBookName(e.target.value), placeholder: "e.g. Rohan Mehta" })),
+          HostelField(bookBlock, bookRoom, setBookBlock, setBookRoom),
+          h("div", { className: "rn-field" }, h("label", null, "Semester"), h("div", { style: { fontSize: 14.5, padding: "11px 13px", borderRadius: 9, border: "1.5px solid var(--line)", background: "var(--cream)" } }, semesterLabel)),
+          h("div", { className: "rn-field" }, h("label", null, "Delivery slot, move-in day"),
+            h("div", { className: "rn-cat-items" }, DELIVERY_SLOTS.map(s =>
+              h("div", { key: s, className: "rn-chip " + (deliverySlot === s ? "selected" : ""), onClick: () => setDeliverySlot(s) },
+                h("span", { className: "rn-chip-check" }, Icon(deliverySlot === s ? "check" : "circle", 18)),
+                h("span", { className: "rn-chip-name" }, s)
+              )
+            ))
+          ),
+          h("button", { className: "rn-btn rn-btn-primary", style: { width: "100%", justifyContent: "center" }, onClick: confirmBooking, disabled: cartIds.length === 0 || busy }, busy ? "Booking\u2026" : "Start booking", Icon("arrowRight", 16))
+        ),
+        formError && h("div", { className: "rn-error" }, formError)
+      ),
+      h("div", { className: "rn-summary-card" },
+        h("h3", { style: { fontSize: 17, margin: "0 0 14px" } }, "Order summary"),
+        cartIds.length === 0 && h("p", { style: { fontSize: 13.5, color: "var(--ink-soft)" } }, "No items selected yet \u2014 head back and build your room."),
+        cartIds.map(id => h("div", { key: id, className: "rn-summary-row" }, h("span", null, ITEM_DEFS[id].name), h("span", null, isBundle ? "\u2014" : money(priceOf(id))))),
+        h("div", { className: "rn-summary-total" },
+          h("span", null, "Total"),
+          isBundle && bundleSavings > 0
+            ? h("span", null, h("span", { style: { textDecoration: "line-through", color: "var(--ink-faint)", fontSize: 14, marginRight: 8 } }, money(allItemsSum)), h("b", null, money(cartTotal)))
+            : h("b", null, money(cartTotal))
+        ),
+        h("button", { className: "rn-link-btn", style: { marginTop: 10 }, onClick: () => setPolicyOpen(true) }, "View wear & damage policy")
+      )
+    );
+  }
+
+  function ConfirmationView() {
+    return h("div", { className: "rn-confirm-wrap" },
+      h("div", { className: "rn-confirm-icon" }, Icon("check", 30)),
+      h("h1", { className: "rn-display" }, "Booking confirmed"),
+      h("p", null, "We've saved your booking as pending \u2014 it'll move to confirmed once the campus coordinator locks in your delivery slot."),
+      h("div", { className: "rn-receipt" },
+        h("div", { className: "rn-receipt-row" }, h("span", null, "Booking ID"), h("b", null, lastBookingId)),
+        h("div", { className: "rn-receipt-row" }, h("span", null, "Status"), StatusPill("Pending")),
+        h("div", { className: "rn-receipt-row" }, h("span", null, "Semester"), h("span", null, semesterLabel)),
+        h("div", { className: "rn-receipt-row" }, h("span", null, "Delivery slot"), h("span", null, deliverySlot))
+      ),
+      h("div", { style: { display: "flex", gap: 12, justifyContent: "center" } },
+        h("button", { className: "rn-btn rn-btn-dark", onClick: () => goTo("dashboard") }, "Go to My Rently"),
+        h("button", { className: "rn-btn rn-btn-ghost", onClick: () => goTo("build") }, "Book something else")
+      )
+    );
+  }
+
+  function DashboardView() {
+    const firstName = (profile && profile.full_name || "").split(" ")[0];
+    return h(React.Fragment, null,
+      h("div", { style: { padding: "36px 0 10px" } },
+        h("h1", { className: "rn-display rn-dash-greeting" }, greetingWord() + (firstName ? ", " + firstName : "")),
+        h("p", { className: "rn-dash-sub" }, myLatest ? "Here's what's active on your account." : "You haven't built a room yet \u2014 it'll show up here once you do.")
+      ),
+      h("div", { className: "rn-dash-grid" },
+        h("div", { className: "rn-dash-card " + (!myLatest ? "muted" : "") }, ItemIcon("boxes", 17), h("b", null, myLatest ? myLatest.items.length + " items" : "No booking"), h("span", null, "Room setup ", myLatest ? "\u00b7 " + myLatest.status : "")),
+        h("div", { className: "rn-dash-card" }, ItemIcon("calendar", 17), h("b", null, formatDate(semEnd)), h("span", null, "Return date")),
+        h("div", { className: "rn-dash-card " + (myStorage.length === 0 ? "muted" : "") }, ItemIcon("archive", 17), h("b", null, myStorage.length === 0 ? "Not started" : (myStorage[0].bag_size === "small" ? "Small bag" : "Trunk")), h("span", null, "Storage ", myStorage.length > 0 ? "\u00b7 " + myStorage[0].status : "")),
+        h("div", { className: "rn-dash-card " + (!(myLatest && myLatest.items.includes("cycle")) ? "muted" : "") }, ItemIcon("bike", 17), h("b", null, myLatest && myLatest.items.includes("cycle") ? cycleDaysLeft + " days" : "Not rented"), h("span", null, "Cycle ", myLatest && myLatest.items.includes("cycle") ? "\u00b7 remaining" : ""))
+      ),
+      h("div", { className: "rn-admin-section" },
+        h("h3", null, "Booking history"),
+        myBookings.length === 0
+          ? h("div", { className: "rn-empty" }, Icon("clipboard", 34), h("p", null, "Nothing booked yet."), h("button", { className: "rn-btn rn-btn-primary", onClick: () => goTo("build") }, "Build my room"))
+          : h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+              h("thead", null, h("tr", null, h("th", null, "Booking"), h("th", null, "Items"), h("th", null, "Semester"), h("th", null, "Status"))),
+              h("tbody", null, myBookings.map(b => h("tr", { key: b.id },
+                h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, b.id)),
+                h("td", null, h("div", { className: "rn-item-tags" }, b.items.length === Object.keys(ITEM_DEFS).length ? h("span", { className: "rn-item-tag" }, "Full bundle") : b.items.map(iid => h("span", { key: iid, className: "rn-item-tag" }, ITEM_DEFS[iid] ? ITEM_DEFS[iid].name : iid)))),
+                h("td", null, formatDate(b.semester_start), " \u2013 ", formatDate(b.semester_end, true)),
+                h("td", null, StatusPill(b.status))
+              )))
+            ))
+      )
+    );
+  }
+
+  function AccountView() {
+    const memberSince = profile && profile.created_at ? new Date(profile.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : "";
+    return h(React.Fragment, null,
+      h("div", { className: "rn-page-head" }, h("h1", { className: "rn-display" }, "Your account"), h("p", null, "Update your details, change your password, and see what Rently knows about your account.")),
+      acctMsg && h("p", { className: "rn-note", style: { marginTop: -10, marginBottom: 16 } }, acctMsg),
+      h("div", { className: "rn-acct-grid" },
+        h("div", { className: "rn-acct-card" },
+          h("h3", null, "Profile"),
+          h("form", { onSubmit: saveAccountProfile },
+            h("div", { className: "rn-field" }, h("label", null, "Full name"), h("input", { value: acctName, onChange: e => setAcctName(e.target.value) })),
+            HostelField(acctBlock, acctRoom, setAcctBlock, setAcctRoom),
+            h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: acctSaving }, acctSaving ? "Saving\u2026" : "Save changes")
+          )
+        ),
+        h("div", { className: "rn-acct-card" },
+          h("h3", null, "Change password"),
+          h("form", { onSubmit: changeAccountPassword },
+            h("div", { className: "rn-field" }, h("label", null, "New password"), h("input", { type: "password", minLength: 6, value: acctPassword, onChange: e => setAcctPassword(e.target.value), placeholder: "At least 6 characters" })),
+            h("button", { className: "rn-btn rn-btn-dark", type: "submit", disabled: acctSaving || !acctPassword }, "Update password")
+          )
+        )
+      ),
+      h("div", { className: "rn-acct-card" },
+        h("h3", null, "Account details"),
+        h("div", { className: "rn-acct-info-row" }, h("span", null, "Email"), h("span", null, session ? session.user.email : "")),
+        h("div", { className: "rn-acct-info-row" }, h("span", null, "Account type"), h("span", { className: "rn-role-badge" }, profile ? profile.role : "")),
+        h("div", { className: "rn-acct-info-row" }, h("span", null, "Member since"), h("span", null, memberSince))
+      )
+    );
+  }
+
+  function CirclesView() {
+    return h(React.Fragment, null,
+      h("div", { className: "rn-circles-head" }, h("b", null, "IBS Hyderabad"), h("span", null, "Your campus"), h("div", { className: "rn-tag-row" }, h("span", { className: "rn-tag" }, "Batch 2026"), h("span", { className: "rn-tag" }, "MBA"), h("span", { className: "rn-tag" }, "Hostel"))),
+      h("div", { className: "rn-section-head" }, h("h2", { className: "rn-display", style: { fontSize: 26 } }, "Trending on campus")),
+      Feed(CIRCLES_FEED, true)
+    );
+  }
+  function StorageView() {
+    return h(React.Fragment, null,
+      h("div", { className: "rn-simple-hero" }, h("h1", { className: "rn-display" }, "Storage"), h("p", null, "Going home for the semester break? Drop your trunk and bags with Rently on move-out day, and they're back in your room before you are next semester.")),
+      h("div", { className: "rn-price-row" }, h("div", { className: "rn-price-card" }, h("b", null, money(500)), h("span", null, "Small bag, one semester break \u00b7 \u2264 40L / 10kg")), h("div", { className: "rn-price-card" }, h("b", null, money(800)), h("span", null, "Trunk or large box, one semester break \u00b7 \u2264 100L / 25kg, max 30\u2033\u00d720\u2033\u00d718\u2033"))),
+      h("div", { className: "rn-acct-card", style: { marginTop: 24 } },
+        h("h3", null, "Request storage"),
+        !session
+          ? AuthForm({ compact: true })
+          : h(React.Fragment, null,
+              h("form", { onSubmit: submitStorageBooking },
+                h("div", { className: "rn-field" }, h("label", null, "What are you storing?"),
+                  h("div", { className: "rn-cat-items" },
+                    h("div", { className: "rn-chip " + (bagSize === "small" ? "selected" : ""), onClick: () => setBagSize("small") }, h("span", { className: "rn-chip-check" }, Icon(bagSize === "small" ? "check" : "circle", 18)), h("div", null, h("span", { className: "rn-chip-name" }, "Small bag \u2014 ", money(500)), h("span", { className: "rn-chip-price" }, "\u2264 40L / 10kg"))),
+                    h("div", { className: "rn-chip " + (bagSize === "trunk" ? "selected" : ""), onClick: () => setBagSize("trunk") }, h("span", { className: "rn-chip-check" }, Icon(bagSize === "trunk" ? "check" : "circle", 18)), h("div", null, h("span", { className: "rn-chip-name" }, "Trunk / large box \u2014 ", money(800)), h("span", { className: "rn-chip-price" }, "\u2264 100L / 25kg")))
+                  )
+                ),
+                HostelField(storageBlock, storageRoom, setStorageBlock, setStorageRoom),
+                h("div", { className: "rn-field" }, h("label", null, "Drop-off date"), h("input", { type: "date", value: dropOffDate, onChange: e => setDropOffDate(e.target.value) })),
+                h("div", { className: "rn-field" }, h("label", null, "Pickup date"), h("input", { type: "date", value: pickupDate, onChange: e => setPickupDate(e.target.value) })),
+                h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: busy }, busy ? "Submitting\u2026" : "Request storage")
+              ),
+              storageMsg && h("p", { className: "rn-note" }, storageMsg)
+            )
+      ),
+      myStorage.length > 0 && h("div", { className: "rn-admin-section", style: { marginTop: 30 } },
+        h("h3", null, "Your storage requests"),
+        h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+          h("thead", null, h("tr", null, h("th", null, "Request"), h("th", null, "Item"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Drop-off"), h("th", null, "Pickup"), h("th", null, "Status"))),
+          h("tbody", null, myStorage.map(s => h("tr", { key: s.id },
+            h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, s.id)),
+            h("td", null, s.bag_size === "small" ? "Small bag" : "Trunk / large box"),
+            h("td", null, s.hostel_block || "\u2014"), h("td", null, s.room_info || "\u2014"),
+            h("td", null, formatDate(s.drop_off_date, true)), h("td", null, formatDate(s.pickup_date, true)),
+            h("td", null, StatusPill(s.status))
+          )))
+        ))
+      ),
+      h("div", { style: { marginTop: 30 } }, FeatureRows([
+        { name: "Drop off", desc: "Handed off during the same move-out window as your room-setup collection.", role: "No separate trip" },
+        { name: "Store", desc: "Held at a secure partner facility for the length of the break.", role: "Insured while stored" },
+        { name: "Return", desc: "Delivered back to your hostel block before the next semester starts.", role: "Ready on move-in day" },
+      ]))
+    );
+  }
+  function MovesView() {
+    return h(React.Fragment, null,
+      h("div", { className: "rn-simple-hero" }, h("h1", { className: "rn-display" }, "Moves"), h("p", null, "Coordinated transport for move-in and move-out day \u2014 your luggage handled in the same window as your room-setup delivery, not a separate trip you have to arrange yourself.")),
+      h("div", { className: "rn-acct-card", style: { marginTop: 24, maxWidth: 480 } },
+        h("h3", null, "Request a move"),
+        !session
+          ? AuthForm({ compact: true })
+          : h(React.Fragment, null,
+              h("form", { onSubmit: submitMoveBooking },
+                h("div", { className: "rn-field" }, h("label", null, "Type"),
+                  h("div", { className: "rn-cat-items" },
+                    h("div", { className: "rn-chip " + (moveType === "move-in" ? "selected" : ""), onClick: () => setMoveType("move-in") }, h("span", { className: "rn-chip-check" }, Icon(moveType === "move-in" ? "check" : "circle", 18)), h("span", { className: "rn-chip-name" }, "Move-in")),
+                    h("div", { className: "rn-chip " + (moveType === "move-out" ? "selected" : ""), onClick: () => setMoveType("move-out") }, h("span", { className: "rn-chip-check" }, Icon(moveType === "move-out" ? "check" : "circle", 18)), h("span", { className: "rn-chip-name" }, "Move-out"))
+                  )
+                ),
+                HostelField(moveBlock, moveRoom, setMoveBlock, setMoveRoom),
+                h("div", { className: "rn-field" }, h("label", null, "Date"), h("input", { type: "date", value: moveDate, onChange: e => setMoveDate(e.target.value) })),
+                h("div", { className: "rn-field" }, h("label", null, "Notes (optional)"), h("input", { value: moveNotes, onChange: e => setMoveNotes(e.target.value), placeholder: "e.g. 2 trunks, 1 cycle" })),
+                h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: busy }, busy ? "Submitting\u2026" : "Request move")
+              ),
+              moveMsg && h("p", { className: "rn-note" }, moveMsg)
+            )
+      ),
+      myMoves.length > 0 && h("div", { className: "rn-admin-section", style: { marginTop: 30 } },
+        h("h3", null, "Your move requests"),
+        h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+          h("thead", null, h("tr", null, h("th", null, "Request"), h("th", null, "Type"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Date"), h("th", null, "Notes"), h("th", null, "Status"))),
+          h("tbody", null, myMoves.map(m => h("tr", { key: m.id },
+            h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, m.id)),
+            h("td", null, m.move_type === "move-in" ? "Move-in" : "Move-out"),
+            h("td", null, m.hostel_block || "\u2014"), h("td", null, m.room_info || "\u2014"),
+            h("td", null, formatDate(m.move_date, true)), h("td", null, m.notes || "\u2014"),
+            h("td", null, StatusPill(m.status))
+          )))
+        ))
+      ),
+      h("div", { style: { marginTop: 30 } }, FeatureRows([
+        { name: "Move-in", desc: "Luggage picked up from your previous stay and delivered with your room setup.", role: "One delivery window" },
+        { name: "Move-out", desc: "Packed and transported out the same day your rented items are collected.", role: "One collection window" },
+        { name: "Track", desc: "A single confirmation covers both your luggage and your rented items.", role: "One booking, not two" },
+      ]))
+    );
+  }
+
+  function AdminView() {
+    return h(React.Fragment, null,
+      h("div", { className: "rn-page-head" }, h("h1", { className: "rn-display" }, "Admin dashboard"), h("p", null, "Track every booking and keep an eye on stock across the six catalog items.")),
+      h("div", { className: "rn-stats-row" },
+        h("div", { className: "rn-stat-card" }, ItemIcon("users", 18, "ink"), h("b", null, totalBookings), h("span", null, "Total bookings")),
+        h("div", { className: "rn-stat-card" }, ItemIcon("repeat", 18, "ink"), h("b", null, activeRentals), h("span", null, "Active rentals (confirmed + delivered)")),
+        h("div", { className: "rn-stat-card " + (lowStockItems.length > 0 ? "warn" : "") }, ItemIcon("boxes", 18, "ink"), h("b", null, lowStockItems.length), h("span", null, "Items running low on stock"))
+      ),
+      h("div", { className: "rn-admin-section" }, h("h3", null, "Bookings"),
+        h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+          h("thead", null, h("tr", null, h("th", null, "Booking"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Slot"), h("th", null, "Items"), h("th", null, "Semester"), h("th", null, "Status"))),
+          h("tbody", null, bookings.map(b => h("tr", { key: b.id },
+            h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, b.id)),
+            h("td", null, b.student_name), h("td", null, b.hostel_block || "\u2014"), h("td", null, b.room_info), h("td", null, b.delivery_slot || "\u2014"),
+            h("td", null, h("div", { className: "rn-item-tags" }, b.items.length === Object.keys(ITEM_DEFS).length ? h("span", { className: "rn-item-tag" }, "Full bundle") : b.items.map(iid => h("span", { key: iid, className: "rn-item-tag" }, ITEM_DEFS[iid] ? ITEM_DEFS[iid].name : iid)))),
+            h("td", null, formatDate(b.semester_start), " \u2013 ", formatDate(b.semester_end, true)),
+            h("td", null, h("select", { className: "rn-status-select", value: b.status, onChange: e => updateStatus(b.id, e.target.value) }, STATUSES.map(s => h("option", { key: s, value: s }, s))))
+          )))
+        ))
+      ),
+      h("div", { className: "rn-admin-section" }, h("h3", null, "Inventory"),
+        h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+          h("thead", null, h("tr", null, h("th", null, "Item"), h("th", null, "Price / semester"), h("th", null, "Stock"), h("th", null))),
+          h("tbody", null, inventory.map(it => h("tr", { key: it.item_id },
+            h("td", null, h("div", { className: "rn-inv-row" }, ItemIcon(ITEM_DEFS[it.item_id] ? ITEM_DEFS[it.item_id].icon : "boxes", 16), h("span", { style: { fontWeight: 600 } }, it.name))),
+            h("td", null, money(it.price)),
+            h("td", null, it.stock < LOW_STOCK ? h("span", { className: "rn-chip-low" }, Icon("alert", 13), " ", it.stock) : it.stock),
+            h("td", null, h("div", { className: "rn-stock-controls" },
+              h("button", { onClick: () => adjustStock(it.item_id, -1) }, Icon("minus", 13)),
+              h("span", { className: "rn-stock-num" }, it.stock),
+              h("button", { onClick: () => adjustStock(it.item_id, 1) }, Icon("plus", 13))
+            ))
+          )))
+        ))
+      ),
+      h("div", { className: "rn-admin-section" }, h("h3", null, "Storage requests"),
+        storageBookings.length === 0 ? h("p", { className: "rn-note" }, "No storage requests yet.") :
+        h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+          h("thead", null, h("tr", null, h("th", null, "Request"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Item"), h("th", null, "Drop-off"), h("th", null, "Pickup"), h("th", null, "Status"))),
+          h("tbody", null, storageBookings.map(s => h("tr", { key: s.id },
+            h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, s.id)),
+            h("td", null, s.student_name), h("td", null, s.hostel_block || "—"), h("td", null, s.room_info),
+            h("td", null, s.bag_size === "small" ? "Small bag" : "Trunk"),
+            h("td", null, formatDate(s.drop_off_date, true)), h("td", null, formatDate(s.pickup_date, true)),
+            h("td", null, h("select", { className: "rn-status-select", value: s.status, onChange: e => updateStorageStatus(s.id, e.target.value) }, STORAGE_STATUSES.map(st => h("option", { key: st, value: st }, st))))
+          )))
+        ))
+      ),
+      h("div", { className: "rn-admin-section" }, h("h3", null, "Move requests"),
+        moveBookings.length === 0 ? h("p", { className: "rn-note" }, "No move requests yet.") :
+        h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+          h("thead", null, h("tr", null, h("th", null, "Request"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Type"), h("th", null, "Date"), h("th", null, "Notes"), h("th", null, "Status"))),
+          h("tbody", null, moveBookings.map(m => h("tr", { key: m.id },
+            h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, m.id)),
+            h("td", null, m.student_name), h("td", null, m.hostel_block || "\u2014"), h("td", null, m.room_info),
+            h("td", null, m.move_type === "move-in" ? "Move-in" : "Move-out"),
+            h("td", null, formatDate(m.move_date, true)), h("td", null, m.notes || "\u2014"),
+            h("td", null, h("select", { className: "rn-status-select", value: m.status, onChange: e => updateMoveStatus(m.id, e.target.value) }, MOVE_STATUSES.map(st => h("option", { key: st, value: st }, st))))
+          )))
+        ))
+      )
+    );
+  }
+
+  function TransportView() {
+    const queue = bookings.filter(b => b.status === "Confirmed" || b.status === "Delivered");
+    const storageQueue = storageBookings.filter(s => s.status === "Requested" || s.status === "Checked in");
+    const moveQueue = moveBookings.filter(m => m.status === "Requested" || m.status === "Scheduled");
+    return h(React.Fragment, null,
+      h("div", { className: "rn-page-head" }, h("h1", { className: "rn-display" }, "Transport queue"), h("p", null, "Bookings waiting for delivery or collection. Mark each one once it's handled.")),
+      queue.length === 0
+        ? h("div", { className: "rn-empty" }, Icon("truck", 34), h("p", null, "Nothing waiting on transport right now."))
+        : h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+            h("thead", null, h("tr", null, h("th", null, "Booking"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Slot"), h("th", null, "Items"), h("th", null, "Status"), h("th", null))),
+            h("tbody", null, queue.map(b => h("tr", { key: b.id },
+              h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, b.id)),
+              h("td", null, b.student_name), h("td", null, b.hostel_block || "—"), h("td", null, b.room_info), h("td", null, b.delivery_slot || "—"),
+              h("td", null, h("div", { className: "rn-item-tags" }, b.items.length === Object.keys(ITEM_DEFS).length ? h("span", { className: "rn-item-tag" }, "Full bundle") : b.items.map(iid => h("span", { key: iid, className: "rn-item-tag" }, ITEM_DEFS[iid] ? ITEM_DEFS[iid].name : iid)))),
+              h("td", null, StatusPill(b.status)),
+              h("td", null, b.status === "Confirmed"
+                ? h("button", { className: "rn-btn rn-btn-dark", onClick: () => updateStatus(b.id, "Delivered") }, "Mark delivered")
+                : h("button", { className: "rn-btn rn-btn-ghost", onClick: () => updateStatus(b.id, "Returned") }, "Mark returned"))
+            )))
+          )),
+      h("div", { className: "rn-admin-section" }, h("h3", null, "Storage pickups & returns"),
+        storageQueue.length === 0 ? h("p", { className: "rn-note" }, "Nothing waiting.") :
+        h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+          h("thead", null, h("tr", null, h("th", null, "Request"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Item"), h("th", null, "Status"), h("th", null))),
+          h("tbody", null, storageQueue.map(s => h("tr", { key: s.id },
+            h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, s.id)),
+            h("td", null, s.student_name), h("td", null, s.hostel_block || "—"), h("td", null, s.room_info),
+            h("td", null, s.bag_size === "small" ? "Small bag" : "Trunk"),
+            h("td", null, StatusPill(s.status)),
+            h("td", null, s.status === "Requested"
+              ? h("button", { className: "rn-btn rn-btn-dark", onClick: () => updateStorageStatus(s.id, "Checked in") }, "Mark checked in")
+              : h("button", { className: "rn-btn rn-btn-ghost", onClick: () => updateStorageStatus(s.id, "Returned") }, "Mark returned"))
+          )))
+        ))
+      ),
+      h("div", { className: "rn-admin-section" }, h("h3", null, "Move requests"),
+        moveQueue.length === 0 ? h("p", { className: "rn-note" }, "Nothing waiting.") :
+        h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+          h("thead", null, h("tr", null, h("th", null, "Request"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Type"), h("th", null, "Date"), h("th", null, "Status"), h("th", null))),
+          h("tbody", null, moveQueue.map(m => h("tr", { key: m.id },
+            h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, m.id)),
+            h("td", null, m.student_name), h("td", null, m.hostel_block || "—"), h("td", null, m.room_info),
+            h("td", null, m.move_type === "move-in" ? "Move-in" : "Move-out"),
+            h("td", null, formatDate(m.move_date, true)),
+            h("td", null, StatusPill(m.status)),
+            h("td", null, m.status === "Requested"
+              ? h("button", { className: "rn-btn rn-btn-dark", onClick: () => updateMoveStatus(m.id, "Scheduled") }, "Mark scheduled")
+              : h("button", { className: "rn-btn rn-btn-ghost", onClick: () => updateMoveStatus(m.id, "Completed") }, "Mark completed"))
+          )))
+        ))
+      )
+    );
+  }
+
+  function AuthForm(props) {
+    return h("div", { className: props.compact ? "" : "rn-auth-wrap" },
+      !props.compact && h("h1", { className: "rn-display" }, authMode === "signup" ? "Create your account" : "Log in"),
+      !props.compact && h("p", null, "Use your campus email to ", authMode === "signup" ? "get started." : "pick up where you left off."),
+      h("form", { onSubmit: handleAuth },
+        h("div", { className: "rn-field" }, h("label", null, "Email"), h("input", { type: "email", required: true, value: authEmail, onChange: e => setAuthEmail(e.target.value), placeholder: "you@campus.edu" })),
+        h("div", { className: "rn-field" }, h("label", null, "Password"), h("input", { type: "password", required: true, minLength: 6, value: authPassword, onChange: e => setAuthPassword(e.target.value), placeholder: "At least 6 characters" })),
+        h("button", { className: "rn-btn rn-btn-primary", style: { width: "100%", justifyContent: "center" }, type: "submit", disabled: busy }, busy ? "Please wait\u2026" : (authMode === "signup" ? "Sign up" : "Log in"))
+      ),
+      authMsg && h("p", { className: "rn-note" }, authMsg),
+      authMode === "login" && h("button", { className: "rn-link-btn", style: { marginTop: 10 }, type: "button", onClick: requestPasswordReset }, "Forgot password?"),
+      h("div", { className: "rn-auth-toggle" },
+        authMode === "signup" ? "Already have an account?" : "New to Rently?",
+        h("button", { className: "rn-link-btn", onClick: () => { setAuthMode(authMode === "signup" ? "login" : "signup"); setAuthMsg(""); } }, authMode === "signup" ? "Log in" : "Sign up")
+      )
+    );
+  }
+
+  function ResetPasswordView() {
+    return h("div", { className: "rn-auth-wrap" },
+      h("h1", { className: "rn-display" }, "Set a new password"),
+      h("p", null, "You've followed a password reset link. Choose a new password to finish."),
+      h("form", { onSubmit: submitNewPassword },
+        h("div", { className: "rn-field" }, h("label", null, "New password"), h("input", { type: "password", required: true, minLength: 6, value: newPassword, onChange: e => setNewPassword(e.target.value), placeholder: "At least 6 characters" })),
+        h("button", { className: "rn-btn rn-btn-primary", style: { width: "100%", justifyContent: "center" }, type: "submit", disabled: busy }, busy ? "Saving\u2026" : "Save new password")
+      ),
+      resetMsg && h("p", { className: "rn-note" }, resetMsg)
+    );
+  }
+
+  let body;
+  if (recoveryMode) body = ResetPasswordView();
+  else if (view === "home") body = HomeView();
+  else if (view === "build") body = BuildView();
+  else if (view === "booking") body = BookingView();
+  else if (view === "confirmation") body = ConfirmationView();
+  else if (view === "dashboard") body = session ? DashboardView() : AuthForm({});
+  else if (view === "account") body = session ? AccountView() : AuthForm({});
+  else if (view === "admin") body = (profile && profile.role === "admin") ? AdminView() : h("div", { className: "rn-loading" }, "Admin access only.");
+  else if (view === "transport") body = (profile && profile.role === "transporter") ? TransportView() : h("div", { className: "rn-loading" }, "Transport access only.");
+  else if (view === "circles") body = CirclesView();
+  else if (view === "storage") body = StorageView();
+  else if (view === "moves") body = MovesView();
+  else if (view === "auth") body = AuthForm({});
+
+  return h("div", null,
+    Header(),
+    h("main", { className: "rn-main" }, body),
+    h("footer", { className: "rn-footer" }, Logo(26), h("span", null, "Live pilot build \u00b7 backed by a real database \u00b7 built for the Rently pilot")),
+    PolicyModal(policyOpen, () => setPolicyOpen(false))
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(h(App));
+</script>
+</body>
+</html>
