@@ -360,9 +360,9 @@ const TRUST_POINTS = [
 ];
 const DELIVERY_STEPS = ["Students book", "Rently aggregates demand", "Partner prepares inventory", "One campus delivery", "Hostel blocks receive orders"];
 const CIRCLES_FEED = [
-  { icon: "clipboard", kind: "Announcement", title: "Hostel Wi-Fi maintenance window", meta: "Today \u00b7 9\u201311 PM" },
-  { icon: "bike", kind: "Renting", title: "Cycle", meta: "\u20b9100/week" },
-  { icon: "mic", kind: "Event", title: "TechnoVee \u2014 speakers & projector booked", meta: "Tomorrow \u00b7 6 PM" },
+  { id: "wifi-maintenance", icon: "clipboard", kind: "Announcement", title: "Hostel Wi-Fi maintenance window", meta: "Today \u00b7 9\u201311 PM" },
+  { id: "cycle-rental", icon: "bike", kind: "Renting", title: "Cycle", meta: "\u20b9100/week" },
+  { id: "technovee-event", icon: "mic", kind: "Event", title: "TechnoVee \u2014 speakers & projector booked", meta: "Tomorrow \u00b7 6 PM" },
 ];
 
 const ICON_PATHS = {
@@ -496,6 +496,10 @@ function App() {
   const [navOpen, setNavOpen] = useState(false);
   const [cartIds, setCartIds] = useState([]);
   const [inventory, setInventory] = useState([]);
+  const [itemDemand, setItemDemand] = useState({});
+  const [circleComments, setCircleComments] = useState({});
+  const [openComments, setOpenComments] = useState({});
+  const [commentDraft, setCommentDraft] = useState({});
   const [bookings, setBookings] = useState([]);
   const [myBookings, setMyBookings] = useState([]);
   const [storageBookings, setStorageBookings] = useState([]);
@@ -576,6 +580,7 @@ function App() {
       setSemEnd(profile.semester_end || addDaysISO(145));
       if (profile.role === "admin") { refreshAllBookings(); refreshInventory(); refreshAllStorage(); refreshAllMoves(); }
       else if (profile.role === "transporter") { refreshAllBookings(); refreshAllStorage(); refreshAllMoves(); }
+      else if (profile.role === "partner") { refreshInventory(); refreshDemand(); }
       else { refreshMyBookings(); refreshMyStorage(); refreshMyMoves(); }
     }
   }, [profile]);
@@ -588,6 +593,29 @@ function App() {
   async function refreshInventory() {
     const { data } = await db.from("inventory").select("*").order("item_id");
     if (data) setInventory(data);
+  }
+  async function refreshDemand() {
+    const { data } = await db.rpc("get_item_demand");
+    if (data) setItemDemand(Object.fromEntries(data.map(r => [r.item_id, r.demand])));
+  }
+  async function toggleComments(postId) {
+    setOpenComments(prev => ({ ...prev, [postId]: !prev[postId] }));
+    if (!circleComments[postId]) {
+      const { data } = await db.from("circle_comments").select("*").eq("post_id", postId).order("created_at");
+      if (data) setCircleComments(prev => ({ ...prev, [postId]: data }));
+    }
+  }
+  async function submitComment(postId, e) {
+    e.preventDefault();
+    const body = (commentDraft[postId] || "").trim();
+    if (!body || !session) return;
+    const { data, error } = await db.from("circle_comments").insert({
+      post_id: postId, author_id: session.user.id, author_name: profile?.full_name || "Student", body,
+    }).select().single();
+    if (!error && data) {
+      setCircleComments(prev => ({ ...prev, [postId]: [...(prev[postId] || []), data] }));
+      setCommentDraft(prev => ({ ...prev, [postId]: "" }));
+    }
   }
   async function refreshMyBookings() {
     const { data } = await db.from("bookings").select("*").order("created_at", { ascending: false });
@@ -816,8 +844,8 @@ function App() {
 
   function Header() {
     const role = profile && profile.role;
-    const acctView = role === "admin" ? "admin" : role === "transporter" ? "transport" : "dashboard";
-    const acctLabel = role === "admin" ? "Admin dashboard" : role === "transporter" ? "Transport" : "My Rently";
+    const acctView = role === "admin" ? "admin" : role === "transporter" ? "transport" : role === "partner" ? "partner" : "dashboard";
+    const acctLabel = role === "admin" ? "Admin dashboard" : role === "transporter" ? "Transport" : role === "partner" ? "Partner" : "My Rently";
     const rightAction = !authReady ? null
       : session
         ? h(React.Fragment, null,
@@ -1059,7 +1087,37 @@ function App() {
     return h(React.Fragment, null,
       h("div", { className: "rn-circles-head" }, h("b", null, "IBS Hyderabad"), h("span", null, "Your campus"), h("div", { className: "rn-tag-row" }, h("span", { className: "rn-tag" }, "Batch 2026"), h("span", { className: "rn-tag" }, "MBA"), h("span", { className: "rn-tag" }, "Hostel"))),
       h("div", { className: "rn-section-head" }, h("h2", { className: "rn-display", style: { fontSize: 26 } }, "Trending on campus")),
-      Feed(CIRCLES_FEED, true)
+      h("div", { className: "rn-feed" }, CIRCLES_FEED.map(f => {
+        const comments = circleComments[f.id] || [];
+        const open = !!openComments[f.id];
+        return h("div", { key: f.id, className: "rn-feed-row", style: { flexDirection: "column", alignItems: "stretch" } },
+          h("div", { style: { display: "flex", alignItems: "center", gap: 12, width: "100%" } },
+            ItemIcon(f.icon, 16),
+            h("div", { style: { flex: 1 } },
+              h("div", { className: "rn-feed-kind" }, f.kind, h("span", { className: "rn-verified" }, Icon("userCheck", 11), " Verified")),
+              h("div", { className: "rn-feed-title" }, f.title)
+            ),
+            h("div", { className: "rn-feed-meta" }, f.meta)
+          ),
+          h("button", { className: "rn-link-btn", style: { alignSelf: "flex-start", marginTop: 8 }, onClick: () => toggleComments(f.id) },
+            open ? "Hide comments" : (comments.length ? comments.length + (comments.length === 1 ? " comment" : " comments") : "Comments")
+          ),
+          open && h("div", { style: { marginTop: 8, paddingLeft: 10, borderLeft: "2px solid var(--line)" } },
+            comments.length === 0 && h("p", { style: { fontSize: 13, color: "var(--ink-faint)", margin: 0 } }, "No comments yet."),
+            comments.map(c => h("div", { key: c.id, style: { marginBottom: 10 } },
+              h("b", { style: { fontSize: 13 } }, c.author_name || "Student"),
+              h("span", { style: { fontSize: 12, color: "var(--ink-faint)", marginLeft: 6 } }, formatDate(c.created_at.slice(0, 10))),
+              h("p", { style: { margin: "2px 0 0", fontSize: 13.5 } }, c.body)
+            )),
+            session
+              ? h("form", { onSubmit: e => submitComment(f.id, e), style: { display: "flex", gap: 8, marginTop: 8 } },
+                  h("input", { value: commentDraft[f.id] || "", onChange: e => setCommentDraft(prev => ({ ...prev, [f.id]: e.target.value })), placeholder: "Add a comment…", style: { flex: 1 } }),
+                  h("button", { className: "rn-btn rn-btn-ghost", type: "submit" }, "Post")
+                )
+              : h("p", { style: { fontSize: 13, color: "var(--ink-faint)" } }, "Log in to comment.")
+          )
+        );
+      }))
     );
   }
   function StorageView() {
@@ -1268,6 +1326,24 @@ function App() {
     );
   }
 
+  function PartnerView() {
+    return h(React.Fragment, null,
+      h("div", { className: "rn-page-head" }, h("h1", { className: "rn-display" }, "Partner dashboard"), h("p", null, "Current stock against pending + confirmed demand, so you know what to prepare ahead of the next delivery window.")),
+      h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+        h("thead", null, h("tr", null, h("th", null, "Item"), h("th", null, "Category"), h("th", null, "In stock"), h("th", null, "Demand"), h("th", null, "Status"))),
+        h("tbody", null, inventory.map(it => {
+          const demand = itemDemand[it.item_id] || 0;
+          const short = demand > it.stock;
+          return h("tr", { key: it.item_id },
+            h("td", null, it.name), h("td", null, it.category || "—"),
+            h("td", null, it.stock), h("td", null, demand),
+            h("td", null, short ? h("span", { className: "rn-chip-low" }, Icon("alert", 13), " Short by ", demand - it.stock) : h("span", { style: { color: "var(--ink-soft)" } }, "OK"))
+          );
+        }))
+      ))
+    );
+  }
+
   function AuthForm(props) {
     return h("div", { className: props.compact ? "" : "rn-auth-wrap" },
       !props.compact && h("h1", { className: "rn-display" }, authMode === "signup" ? "Create your account" : "Log in"),
@@ -1321,6 +1397,7 @@ function App() {
   else if (view === "account") body = session ? AccountView() : AuthForm({});
   else if (view === "admin") body = (profile && profile.role === "admin") ? AdminView() : h("div", { className: "rn-loading" }, "Admin access only.");
   else if (view === "transport") body = (profile && profile.role === "transporter") ? TransportView() : h("div", { className: "rn-loading" }, "Transport access only.");
+  else if (view === "partner") body = (profile && profile.role === "partner") ? PartnerView() : h("div", { className: "rn-loading" }, "Partner access only.");
   else if (view === "circles") body = CirclesView();
   else if (view === "storage") body = StorageView();
   else if (view === "moves") body = MovesView();
