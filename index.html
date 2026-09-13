@@ -505,6 +505,17 @@ function PolicyModal(open, onClose) {
     )
   );
 }
+function ImageLightbox(image, onClose) {
+  if (!image) return null;
+  return h("div", { style: { position: "fixed", inset: 0, background: "rgba(21,46,41,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 24 }, onClick: onClose },
+    h("div", { style: { maxWidth: 560, width: "100%" }, onClick: e => e.stopPropagation() },
+      h("img", { src: image.url, alt: image.alt, style: { width: "100%", borderRadius: 16, display: "block" } }),
+      h("div", { style: { textAlign: "center", marginTop: 14 } },
+        h("button", { className: "rn-btn rn-btn-ghost", style: { background: "#fff" }, onClick: onClose }, "Close")
+      )
+    )
+  );
+}
 
 function App() {
   const [session, setSession] = useState(null);
@@ -580,6 +591,7 @@ function App() {
   const [moveBlock, setMoveBlock] = useState("");
   const [moveRoom, setMoveRoom] = useState("");
   const [policyOpen, setPolicyOpen] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState(null);
 
   useEffect(() => {
     db.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
@@ -786,10 +798,18 @@ function App() {
   function stockOf(id) { const row = inventory.find(i => i.item_id === id); return row ? row.stock : 0; }
   function priceOf(id) { const row = inventory.find(i => i.item_id === id); return row ? row.price : 0; }
   function imageOf(id) { const row = inventory.find(i => i.item_id === id); return row ? row.image_url : null; }
-  function ItemVisual(id, size, iconName) {
+  function ItemVisual(id, size, iconName, opts) {
     size = size || 20;
+    opts = opts || {};
     const url = imageOf(id);
-    if (url) return h("img", { src: url, alt: ITEM_DEFS[id] ? ITEM_DEFS[id].name : id, style: { width: size * 1.9, height: size * 1.9, objectFit: "cover", borderRadius: 10, flexShrink: 0 } });
+    const name = ITEM_DEFS[id] ? ITEM_DEFS[id].name : id;
+    if (url) {
+      return h("img", {
+        src: url, alt: name,
+        style: { width: size * 1.9, height: size * 1.9, objectFit: "cover", borderRadius: 10, flexShrink: 0, cursor: opts.clickable ? "zoom-in" : undefined },
+        onClick: opts.clickable ? e => { e.stopPropagation(); setLightboxImage({ url, alt: name }); } : undefined,
+      });
+    }
     return ItemIcon(iconName, size);
   }
   const isBundle = cartIds.length === Object.keys(ITEM_DEFS).length;
@@ -1013,7 +1033,7 @@ function App() {
         h("div", { className: "rn-kit-panel" },
           h("span", { className: "rn-kit-label" }, "What's in the room-setup bundle"),
           h("div", { className: "rn-kit-grid" }, Object.keys(ITEM_DEFS).map(id =>
-            h("div", { key: id, className: "rn-kit-chip" }, ItemVisual(id, 17, ITEM_DEFS[id].icon), h("div", { className: "rn-kit-chip-name" }, ITEM_DEFS[id].name), h("div", { className: "rn-kit-chip-price" }, money(priceOf(id)), " alone"))
+            h("div", { key: id, className: "rn-kit-chip" }, ItemVisual(id, 34, ITEM_DEFS[id].icon, { clickable: true }), h("div", { className: "rn-kit-chip-name" }, ITEM_DEFS[id].name), h("div", { className: "rn-kit-chip-price" }, money(priceOf(id)), " alone"))
           )),
           h("div", { className: "rn-kit-price-tag" }, h("div", null, h("b", null, money(BUNDLE_PRICE)), h("span", null, " full bundle, one semester")), bundleSavings > 0 && h("span", null, "save ", money(bundleSavings)))
         )
@@ -1075,7 +1095,7 @@ function App() {
             const stock = stockOf(id);
             return h("div", { key: id, className: "rn-chip " + (selected ? "selected" : ""), ...chipA11y("checkbox", selected, () => toggleItem(id)) },
               h("span", { className: "rn-chip-check" }, Icon(selected ? "check" : "circle", 18)),
-              ItemVisual(id, 16, ITEM_DEFS[id].icon),
+              ItemVisual(id, 26, ITEM_DEFS[id].icon, { clickable: true }),
               h("div", null,
                 h("span", { className: "rn-chip-name" }, ITEM_DEFS[id].name),
                 h("span", { className: "rn-chip-price" }, money(priceOf(id)), "/sem", stock < LOW_STOCK && h("span", { className: "rn-chip-low" }, " \u00b7 ", stock, " left")),
@@ -1423,7 +1443,7 @@ function App() {
             h("td", null,
               h("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 } },
                 h("label", { style: { cursor: "pointer", display: "inline-block" }, title: it.image_url ? "Click to replace photo" : "Click to add a photo" },
-                  ItemVisual(it.item_id, 16, ITEM_DEFS[it.item_id] ? ITEM_DEFS[it.item_id].icon : "boxes"),
+                  ItemVisual(it.item_id, 22, ITEM_DEFS[it.item_id] ? ITEM_DEFS[it.item_id].icon : "boxes"),
                   h("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: e => uploadItemImage(it.item_id, e.target.files[0]) })
                 ),
                 it.image_url && h("button", { className: "rn-link-btn", style: { fontSize: 11.5 }, onClick: () => removeItemImage(it.item_id) }, "Remove")
@@ -1631,7 +1651,8 @@ function App() {
         h("a", { href: "/terms", onClick: e => { e.preventDefault(); goTo("terms"); } }, "Terms")
       )
     ),
-    PolicyModal(policyOpen, () => setPolicyOpen(false))
+    PolicyModal(policyOpen, () => setPolicyOpen(false)),
+    ImageLightbox(lightboxImage, () => setLightboxImage(null))
   );
 }
 
