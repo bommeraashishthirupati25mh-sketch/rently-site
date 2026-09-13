@@ -1,0 +1,11 @@
+-- First slice of the multi-tenant role rework: a pickup verification code
+-- for the student's room-setup booking. This is the piece the later
+-- Logistics Crew (gate scan) and Brand Supplier (manifest) work depends
+-- on, so it goes in first.
+--
+-- A 6-digit code is generated client-side at booking time (same pattern
+-- already used for booking IDs) and stored here. Existing bookings won't
+-- have one -- that's fine, nothing currently reads it retroactively.
+-- No RLS changes needed: students already read their own bookings, and
+-- admin/transporter already read all bookings, via existing policies.
+alter table public.bookings add column if not exists pickup_otp text;

@@ -17,6 +17,7 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
   :root {
@@ -901,12 +902,14 @@ function App() {
     if (semStart < todayISO()) { setFormError("Your semester start date is in the past — update it in My Rently before booking a delivery."); return; }
     setBusy(true);
     let error, id;
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
     for (let attempt = 0; attempt < 3; attempt++) {
       id = "RNT-" + Math.floor(1000 + Math.random() * 9000);
       const res = await db.from("bookings").insert({
         id, student_id: session.user.id, student_name: bookName.trim(),
         hostel_block: bookBlock, room_info: bookRoom.trim(), delivery_slot: deliverySlot,
         items: cartIds, semester_start: semStart, semester_end: semEnd, status: "Pending",
+        pickup_otp: otp,
       });
       error = res.error;
       if (!error || error.code !== "23505") break; // 23505 = duplicate booking id, try a fresh one
@@ -1161,7 +1164,28 @@ function App() {
     );
   }
 
+  function PickupCode(booking) {
+    if (!booking || !booking.pickup_otp) return null;
+    let qrUrl = null;
+    if (window.qrcode) {
+      try {
+        const qr = qrcode(0, "M");
+        qr.addData(booking.id + ":" + booking.pickup_otp);
+        qr.make();
+        qrUrl = qr.createDataURL(6, 4);
+      } catch (e) { console.error("QR generation failed:", e.message); }
+    }
+    return h("div", { className: "rn-acct-card", style: { marginTop: 20, textAlign: "center" } },
+      h("h3", { style: { margin: "0 0 4px" } }, "Pickup code"),
+      h("p", { style: { margin: "0 0 16px", fontSize: 13.5, color: "var(--ink-soft)" } }, "Show this to the delivery crew on move-in day — it's how they confirm the handover is really you."),
+      qrUrl
+        ? h("img", { src: qrUrl, alt: "Pickup QR code", style: { width: 160, height: 160, margin: "0 auto 14px", display: "block", imageRendering: "pixelated" } })
+        : h("div", { style: { width: 160, height: 160, margin: "0 auto 14px", background: "var(--cream)", borderRadius: 12 } }),
+      h("div", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 32, letterSpacing: 4 } }, booking.pickup_otp)
+    );
+  }
   function ConfirmationView() {
+    const lastBooking = myBookings.find(b => b.id === lastBookingId);
     return h("div", { className: "rn-confirm-wrap" },
       h("div", { className: "rn-confirm-icon" }, Icon("check", 30)),
       h("h1", { className: "rn-display" }, "Booking confirmed"),
@@ -1172,6 +1196,7 @@ function App() {
         h("div", { className: "rn-receipt-row" }, h("span", null, "Semester"), h("span", null, semesterLabel)),
         h("div", { className: "rn-receipt-row" }, h("span", null, "Delivery slot"), h("span", null, deliverySlot))
       ),
+      PickupCode(lastBooking),
       h("div", { style: { display: "flex", gap: 12, justifyContent: "center" } },
         h("button", { className: "rn-btn rn-btn-dark", onClick: () => goTo("dashboard") }, "Go to My Rently"),
         h("button", { className: "rn-btn rn-btn-ghost", onClick: () => goTo("build") }, "Book something else")
@@ -1192,6 +1217,7 @@ function App() {
         h("div", { className: "rn-dash-card " + (myStorage.length === 0 ? "muted" : "") }, ItemIcon("archive", 17), h("b", null, myStorage.length === 0 ? "Not started" : (myStorage[0].bag_size === "small" ? "Small bag" : "Trunk")), h("span", null, "Storage ", myStorage.length > 0 ? "\u00b7 " + myStorage[0].status : "")),
         h("div", { className: "rn-dash-card " + (!(myLatest && myLatest.items.includes("cycle")) ? "muted" : "") }, ItemIcon("bike", 17), h("b", null, myLatest && myLatest.items.includes("cycle") ? cycleDaysLeft + " days" : "Not rented"), h("span", null, "Cycle ", myLatest && myLatest.items.includes("cycle") ? "\u00b7 remaining" : ""))
       ),
+      myLatest && (myLatest.status === "Pending" || myLatest.status === "Confirmed") && PickupCode(myLatest),
       h("div", { className: "rn-admin-section" },
         h("h3", null, "Booking history"),
         myBookings.length === 0
