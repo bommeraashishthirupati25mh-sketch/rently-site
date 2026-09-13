@@ -918,8 +918,14 @@ function App() {
     if (error) { alert("Couldn't update stock: " + error.message); return; }
     refreshInventory();
   }
+  function storagePathFromUrl(url) {
+    const marker = "/item-images/";
+    const idx = url.indexOf(marker);
+    return idx === -1 ? null : url.slice(idx + marker.length);
+  }
   async function uploadItemImage(itemId, file) {
     if (!file) return;
+    const oldUrl = imageOf(itemId);
     const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
     const path = itemId + "-" + Date.now() + "." + ext;
     const { error: upErr } = await db.storage.from("item-images").upload(path, file, { upsert: true });
@@ -927,6 +933,16 @@ function App() {
     const { data } = db.storage.from("item-images").getPublicUrl(path);
     const { error } = await db.from("inventory").update({ image_url: data.publicUrl }).eq("item_id", itemId);
     if (error) { alert("Couldn't save image: " + error.message); return; }
+    const oldPath = oldUrl && storagePathFromUrl(oldUrl);
+    if (oldPath) await db.storage.from("item-images").remove([oldPath]);
+    refreshInventory();
+  }
+  async function removeItemImage(itemId) {
+    const oldUrl = imageOf(itemId);
+    const { error } = await db.from("inventory").update({ image_url: null }).eq("item_id", itemId);
+    if (error) { alert("Couldn't remove image: " + error.message); return; }
+    const oldPath = oldUrl && storagePathFromUrl(oldUrl);
+    if (oldPath) await db.storage.from("item-images").remove([oldPath]);
     refreshInventory();
   }
 
@@ -1405,9 +1421,12 @@ function App() {
           h("thead", null, h("tr", null, h("th", null, "Photo"), h("th", null, "Item"), h("th", null, "Price / semester"), h("th", null, "Stock"), h("th", null))),
           h("tbody", null, inventory.map(it => h("tr", { key: it.item_id },
             h("td", null,
-              h("label", { style: { cursor: "pointer", display: "inline-block" } },
-                ItemVisual(it.item_id, 16, ITEM_DEFS[it.item_id] ? ITEM_DEFS[it.item_id].icon : "boxes"),
-                h("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: e => uploadItemImage(it.item_id, e.target.files[0]) })
+              h("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 } },
+                h("label", { style: { cursor: "pointer", display: "inline-block" }, title: it.image_url ? "Click to replace photo" : "Click to add a photo" },
+                  ItemVisual(it.item_id, 16, ITEM_DEFS[it.item_id] ? ITEM_DEFS[it.item_id].icon : "boxes"),
+                  h("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: e => uploadItemImage(it.item_id, e.target.files[0]) })
+                ),
+                it.image_url && h("button", { className: "rn-link-btn", style: { fontSize: 11.5 }, onClick: () => removeItemImage(it.item_id) }, "Remove")
               )
             ),
             h("td", null, h("div", { className: "rn-inv-row" }, h("span", { style: { fontWeight: 600 } }, it.name))),
