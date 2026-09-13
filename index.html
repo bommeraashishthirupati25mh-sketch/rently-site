@@ -174,6 +174,8 @@
   .rn-status-checked-in { background: var(--magenta-tint); color: var(--magenta-dark); }
   .rn-status-scheduled { background: #DCE7E0; color: #2C5E45; }
   .rn-status-completed { background: #E4E4E0; color: var(--ink-soft); }
+  .rn-status-paid { background: #DCE7E0; color: #2C5E45; }
+  .rn-status-unpaid { background: #F3E3C4; color: #8A6116; }
   .rn-item-tags { display: flex; gap: 5px; flex-wrap: wrap; max-width: 260px; }
   .rn-item-tag { font-size: 11.5px; background: var(--cream-card); border-radius: 6px; padding: 3px 7px; color: var(--ink-soft); white-space: nowrap; }
   .rn-status-select { font-family: 'Inter'; font-size: 13px; padding: 7px 9px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--cream); }
@@ -329,6 +331,7 @@ const CATEGORIES = [
 ];
 const BUNDLE_PRICE = 600;
 const MOVE_PRICE = 300;
+const UPI_ID = "ashish261105--3@okaxis";
 const LOW_STOCK = 30;
 const STATUSES = ["Pending", "Confirmed", "Delivered", "Returned"];
 const STORAGE_STATUSES = ["Requested", "Checked in", "Returned"];
@@ -812,6 +815,13 @@ function App() {
     if (error) { alert("Couldn't update: " + error.message); return; }
     refreshAllMoves();
   }
+  async function markPaid(table, id) {
+    const { error } = await db.from(table).update({ payment_status: "Paid" }).eq("id", id);
+    if (error) { alert("Couldn't update: " + error.message); return; }
+    if (table === "bookings") refreshAllBookings();
+    else if (table === "storage_bookings") refreshAllStorage();
+    else if (table === "move_bookings") refreshAllMoves();
+  }
 
   function stockOf(id) { const row = inventory.find(i => i.item_id === id); return row ? row.stock : 0; }
   function priceOf(id) { const row = inventory.find(i => i.item_id === id); return row ? row.price : 0; }
@@ -1191,6 +1201,35 @@ function App() {
     );
   }
 
+  function priceForItems(items) {
+    return items.length === Object.keys(ITEM_DEFS).length ? BUNDLE_PRICE : items.reduce((s, id) => s + priceOf(id), 0);
+  }
+  function PaymentInfo(id, amount, paymentStatus) {
+    if (paymentStatus === "Paid") {
+      return h("div", { className: "rn-acct-card", style: { marginTop: 20, textAlign: "center" } },
+        h("h3", { style: { margin: "0 0 4px" } }, "Payment"),
+        h("p", { style: { margin: 0, color: "var(--ink-soft)", fontSize: 13.5 } }, Icon("check", 14), " Marked as paid — thanks!")
+      );
+    }
+    const upiUri = "upi://pay?pa=" + encodeURIComponent(UPI_ID) + "&pn=" + encodeURIComponent("Rently") + "&am=" + amount + "&cu=INR&tn=" + encodeURIComponent(id);
+    let qrUrl = null;
+    if (window.qrcode) {
+      try {
+        const qr = qrcode(0, "M");
+        qr.addData(upiUri);
+        qr.make();
+        qrUrl = qr.createDataURL(6, 4);
+      } catch (e) { console.error("QR generation failed:", e.message); }
+    }
+    return h("div", { className: "rn-acct-card", style: { marginTop: 20, textAlign: "center" } },
+      h("h3", { style: { margin: "0 0 4px" } }, "Pay ", money(amount), " via UPI"),
+      h("p", { style: { margin: "0 0 16px", fontSize: 13.5, color: "var(--ink-soft)" } }, "Scan with any UPI app, or pay directly to ", h("b", null, UPI_ID), ". We'll confirm once it's received."),
+      qrUrl
+        ? h("img", { src: qrUrl, alt: "UPI payment QR code", style: { width: 160, height: 160, margin: "0 auto 14px", display: "block", imageRendering: "pixelated" } })
+        : h("div", { style: { width: 160, height: 160, margin: "0 auto 14px", background: "var(--cream)", borderRadius: 12 } }),
+      h("div", { style: { fontFamily: "monospace", fontSize: 15 } }, UPI_ID)
+    );
+  }
   function PickupCode(booking) {
     if (!booking || !booking.pickup_otp) return null;
     let qrUrl = null;
@@ -1223,6 +1262,7 @@ function App() {
         h("div", { className: "rn-receipt-row" }, h("span", null, "Semester"), h("span", null, semesterLabel)),
         h("div", { className: "rn-receipt-row" }, h("span", null, "Delivery slot"), h("span", null, deliverySlot))
       ),
+      lastBooking && PaymentInfo(lastBooking.id, priceForItems(lastBooking.items), lastBooking.payment_status),
       PickupCode(lastBooking),
       h("div", { style: { display: "flex", gap: 12, justifyContent: "center" } },
         h("button", { className: "rn-btn rn-btn-dark", onClick: () => goTo("dashboard") }, "Go to My Rently"),
@@ -1244,6 +1284,7 @@ function App() {
         h("div", { className: "rn-dash-card " + (myStorage.length === 0 ? "muted" : "") }, ItemIcon("archive", 17), h("b", null, myStorage.length === 0 ? "Not started" : (myStorage[0].bag_size === "small" ? "Small bag" : "Trunk")), h("span", null, "Storage ", myStorage.length > 0 ? "\u00b7 " + myStorage[0].status : "")),
         h("div", { className: "rn-dash-card " + (!(myLatest && myLatest.items.includes("cycle")) ? "muted" : "") }, ItemIcon("bike", 17), h("b", null, myLatest && myLatest.items.includes("cycle") ? cycleDaysLeft + " days" : "Not rented"), h("span", null, "Cycle ", myLatest && myLatest.items.includes("cycle") ? "\u00b7 remaining" : ""))
       ),
+      myLatest && (myLatest.status === "Pending" || myLatest.status === "Confirmed") && PaymentInfo(myLatest.id, priceForItems(myLatest.items), myLatest.payment_status),
       myLatest && (myLatest.status === "Pending" || myLatest.status === "Confirmed") && PickupCode(myLatest),
       h("div", { className: "rn-admin-section" },
         h("h3", null, "Booking history"),
@@ -1405,16 +1446,18 @@ function App() {
               storageMsg && h("p", { className: "rn-note" }, storageMsg)
             )
       ),
+      myStorage.length > 0 && myStorage[0].payment_status !== "Paid" && PaymentInfo(myStorage[0].id, myStorage[0].bag_size === "small" ? 500 : 800, myStorage[0].payment_status),
       myStorage.length > 0 && h("div", { className: "rn-admin-section", style: { marginTop: 30 } },
         h("h3", null, "Your storage requests"),
         h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
-          h("thead", null, h("tr", null, h("th", null, "Request"), h("th", null, "Item"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Drop-off"), h("th", null, "Pickup"), h("th", null, "Status"))),
+          h("thead", null, h("tr", null, h("th", null, "Request"), h("th", null, "Item"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Drop-off"), h("th", null, "Pickup"), h("th", null, "Status"), h("th", null, "Payment"))),
           h("tbody", null, myStorage.map(s => h("tr", { key: s.id },
             h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, s.id)),
             h("td", null, s.bag_size === "small" ? "Small bag" : "Trunk / large box"),
             h("td", null, s.hostel_block || "\u2014"), h("td", null, s.room_info || "\u2014"),
             h("td", null, formatDate(s.drop_off_date, true)), h("td", null, formatDate(s.pickup_date, true)),
-            h("td", null, StatusPill(s.status))
+            h("td", null, StatusPill(s.status)),
+            h("td", null, StatusPill(s.payment_status))
           )))
         ))
       ),
@@ -1448,16 +1491,18 @@ function App() {
               moveMsg && h("p", { className: "rn-note" }, moveMsg)
             )
       ),
+      myMoves.length > 0 && myMoves[0].payment_status !== "Paid" && PaymentInfo(myMoves[0].id, MOVE_PRICE, myMoves[0].payment_status),
       myMoves.length > 0 && h("div", { className: "rn-admin-section", style: { marginTop: 30 } },
         h("h3", null, "Your move requests"),
         h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
-          h("thead", null, h("tr", null, h("th", null, "Request"), h("th", null, "Type"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Date"), h("th", null, "Notes"), h("th", null, "Status"))),
+          h("thead", null, h("tr", null, h("th", null, "Request"), h("th", null, "Type"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Date"), h("th", null, "Notes"), h("th", null, "Status"), h("th", null, "Payment"))),
           h("tbody", null, myMoves.map(m => h("tr", { key: m.id },
             h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, m.id)),
             h("td", null, m.move_type === "move-in" ? "Move-in" : "Move-out"),
             h("td", null, m.hostel_block || "\u2014"), h("td", null, m.room_info || "\u2014"),
             h("td", null, formatDate(m.move_date, true)), h("td", null, m.notes || "\u2014"),
-            h("td", null, StatusPill(m.status))
+            h("td", null, StatusPill(m.status)),
+            h("td", null, StatusPill(m.payment_status))
           )))
         ))
       ),
@@ -1479,13 +1524,14 @@ function App() {
       ),
       h("div", { className: "rn-admin-section" }, h("h3", null, "Bookings"),
         h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
-          h("thead", null, h("tr", null, h("th", null, "Booking"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Slot"), h("th", null, "Items"), h("th", null, "Semester"), h("th", null, "Status"))),
+          h("thead", null, h("tr", null, h("th", null, "Booking"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Slot"), h("th", null, "Items"), h("th", null, "Semester"), h("th", null, "Status"), h("th", null, "Payment"))),
           h("tbody", null, bookings.map(b => h("tr", { key: b.id },
             h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, b.id)),
             h("td", null, b.student_name), h("td", null, b.hostel_block || "\u2014"), h("td", null, b.room_info), h("td", null, b.delivery_slot || "\u2014"),
             h("td", null, h("div", { className: "rn-item-tags" }, b.items.length === Object.keys(ITEM_DEFS).length ? h("span", { className: "rn-item-tag" }, "Full bundle") : b.items.map(iid => h("span", { key: iid, className: "rn-item-tag" }, ITEM_DEFS[iid] ? ITEM_DEFS[iid].name : iid)))),
             h("td", null, formatDate(b.semester_start), " \u2013 ", formatDate(b.semester_end, true)),
-            h("td", null, h("select", { className: "rn-status-select", value: b.status, onChange: e => updateStatus(b.id, e.target.value) }, STATUSES.map(s => h("option", { key: s, value: s }, s))))
+            h("td", null, h("select", { className: "rn-status-select", value: b.status, onChange: e => updateStatus(b.id, e.target.value) }, STATUSES.map(s => h("option", { key: s, value: s }, s)))),
+            h("td", null, b.payment_status === "Paid" ? StatusPill("Paid") : h("button", { className: "rn-btn rn-btn-ghost", onClick: () => markPaid("bookings", b.id) }, "Mark paid"))
           )))
         ))
       ),
@@ -1516,26 +1562,28 @@ function App() {
       h("div", { className: "rn-admin-section" }, h("h3", null, "Storage requests"),
         storageBookings.length === 0 ? h("p", { className: "rn-note" }, "No storage requests yet.") :
         h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
-          h("thead", null, h("tr", null, h("th", null, "Request"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Item"), h("th", null, "Drop-off"), h("th", null, "Pickup"), h("th", null, "Status"))),
+          h("thead", null, h("tr", null, h("th", null, "Request"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Item"), h("th", null, "Drop-off"), h("th", null, "Pickup"), h("th", null, "Status"), h("th", null, "Payment"))),
           h("tbody", null, storageBookings.map(s => h("tr", { key: s.id },
             h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, s.id)),
             h("td", null, s.student_name), h("td", null, s.hostel_block || "—"), h("td", null, s.room_info),
             h("td", null, s.bag_size === "small" ? "Small bag" : "Trunk"),
             h("td", null, formatDate(s.drop_off_date, true)), h("td", null, formatDate(s.pickup_date, true)),
-            h("td", null, h("select", { className: "rn-status-select", value: s.status, onChange: e => updateStorageStatus(s.id, e.target.value) }, STORAGE_STATUSES.map(st => h("option", { key: st, value: st }, st))))
+            h("td", null, h("select", { className: "rn-status-select", value: s.status, onChange: e => updateStorageStatus(s.id, e.target.value) }, STORAGE_STATUSES.map(st => h("option", { key: st, value: st }, st)))),
+            h("td", null, s.payment_status === "Paid" ? StatusPill("Paid") : h("button", { className: "rn-btn rn-btn-ghost", onClick: () => markPaid("storage_bookings", s.id) }, "Mark paid"))
           )))
         ))
       ),
       h("div", { className: "rn-admin-section" }, h("h3", null, "Move requests"),
         moveBookings.length === 0 ? h("p", { className: "rn-note" }, "No move requests yet.") :
         h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
-          h("thead", null, h("tr", null, h("th", null, "Request"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Type"), h("th", null, "Date"), h("th", null, "Notes"), h("th", null, "Status"))),
+          h("thead", null, h("tr", null, h("th", null, "Request"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Type"), h("th", null, "Date"), h("th", null, "Notes"), h("th", null, "Status"), h("th", null, "Payment"))),
           h("tbody", null, moveBookings.map(m => h("tr", { key: m.id },
             h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, m.id)),
             h("td", null, m.student_name), h("td", null, m.hostel_block || "\u2014"), h("td", null, m.room_info),
             h("td", null, m.move_type === "move-in" ? "Move-in" : "Move-out"),
             h("td", null, formatDate(m.move_date, true)), h("td", null, m.notes || "\u2014"),
-            h("td", null, h("select", { className: "rn-status-select", value: m.status, onChange: e => updateMoveStatus(m.id, e.target.value) }, MOVE_STATUSES.map(st => h("option", { key: st, value: st }, st))))
+            h("td", null, h("select", { className: "rn-status-select", value: m.status, onChange: e => updateMoveStatus(m.id, e.target.value) }, MOVE_STATUSES.map(st => h("option", { key: st, value: st }, st)))),
+            h("td", null, m.payment_status === "Paid" ? StatusPill("Paid") : h("button", { className: "rn-btn rn-btn-ghost", onClick: () => markPaid("move_bookings", m.id) }, "Mark paid"))
           )))
         ))
       ),
