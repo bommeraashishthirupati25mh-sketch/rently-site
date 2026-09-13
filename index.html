@@ -667,6 +667,18 @@ function App() {
     setNewPostTitle(""); setNewPostBody(""); setNewPostMeta(""); setNewPostEventDate(""); setNewPostOpen(false); setCircleMsg("");
     refreshCirclePosts();
   }
+  async function deleteCirclePost(id) {
+    const { error } = await db.from("circles_posts").delete().eq("id", id);
+    if (error) { alert("Couldn't delete: " + error.message); return; }
+    setCirclePosts(prev => prev.filter(p => p.id !== id));
+    setCircleComments(prev => { const next = { ...prev }; delete next[id]; return next; });
+  }
+  async function deleteComment(postId, commentId) {
+    const { error } = await db.from("circle_comments").delete().eq("id", commentId);
+    if (error) { alert("Couldn't delete: " + error.message); return; }
+    const { data } = await db.from("circle_comments").select("*").eq("post_id", postId).order("created_at");
+    setCircleComments(prev => ({ ...prev, [postId]: data || [] }));
+  }
   async function refreshMyBookings() {
     const { data } = await db.from("bookings").select("*").order("created_at", { ascending: false });
     if (data) setMyBookings(data);
@@ -1141,6 +1153,7 @@ function App() {
       h("span", { style: { fontSize: 12, color: "var(--ink-faint)", marginLeft: 6 } }, formatDate(comment.created_at.slice(0, 10))),
       h("p", { style: { margin: "2px 0 4px", fontSize: 13.5 } }, comment.body),
       session && h("button", { className: "rn-link-btn", style: { fontSize: 12.5 }, onClick: () => setReplyTarget(prev => ({ ...prev, [postId]: isReplying ? null : comment.id })) }, isReplying ? "Cancel" : "Reply"),
+      profile?.role === "admin" && h("button", { className: "rn-link-btn", style: { fontSize: 12.5, marginLeft: 10, color: "var(--magenta-dark)" }, onClick: () => deleteComment(postId, comment.id) }, "Delete"),
       isReplying && h("form", { onSubmit: e => submitComment(postId, comment.id, draftKey, e), style: { display: "flex", gap: 8, marginTop: 6 } },
         h("input", { value: commentDraft[draftKey] || "", onChange: e => setCommentDraft(prev => ({ ...prev, [draftKey]: e.target.value })), placeholder: "Write a reply…", style: { flex: 1 } }),
         h("button", { className: "rn-btn rn-btn-ghost", type: "submit" }, "Reply")
@@ -1191,8 +1204,11 @@ function App() {
             ),
             h("div", { className: "rn-feed-meta" }, metaLine)
           ),
-          h("button", { className: "rn-link-btn", style: { alignSelf: "flex-start", marginTop: 8 }, onClick: () => toggleThread(p.id) },
-            open ? "Hide comments" : (comments.length ? comments.length + (comments.length === 1 ? " comment" : " comments") : "Comments")
+          h("div", { style: { display: "flex", gap: 14, marginTop: 8 } },
+            h("button", { className: "rn-link-btn", onClick: () => toggleThread(p.id) },
+              open ? "Hide comments" : (comments.length ? comments.length + (comments.length === 1 ? " comment" : " comments") : "Comments")
+            ),
+            profile?.role === "admin" && h("button", { className: "rn-link-btn", style: { color: "var(--magenta-dark)" }, onClick: () => deleteCirclePost(p.id) }, "Delete post")
           ),
           open && h("div", { style: { marginTop: 8 } },
             tree.length === 0 && h("p", { style: { fontSize: 13, color: "var(--ink-faint)", margin: 0 } }, "No comments yet."),
