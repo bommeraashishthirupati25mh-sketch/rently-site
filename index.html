@@ -79,6 +79,10 @@
   .rn-section-head p { color: var(--ink-soft); font-size: 15px; max-width: 340px; margin: 0; }
   .rn-trust-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
   .rn-trust-card { border: 1px solid var(--line); border-radius: 16px; padding: 22px; background: #fff; }
+  .rn-testi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .rn-testi-card { border: 1px solid var(--line); border-radius: 16px; padding: 20px; background: #fff; }
+  .rn-testi-quote { font-size: 14.5px; color: var(--ink); margin: 0 0 12px; }
+  .rn-testi-author { font-size: 13px; color: var(--ink-soft); font-weight: 600; }
   .rn-trust-card .rn-item-icon { margin-bottom: 14px; }
   .rn-trust-card h4 { font-size: 15.5px; margin: 0 0 6px; }
   .rn-trust-card p { font-size: 13.5px; color: var(--ink-soft); margin: 0; }
@@ -220,6 +224,7 @@
     .rn-hero { grid-template-columns: 1fr; padding-top: 30px; gap: 32px; }
     .rn-hero h1 { font-size: 38px; }
     .rn-trust-grid { grid-template-columns: 1fr 1fr; }
+    .rn-testi-grid { grid-template-columns: 1fr 1fr; }
     .rn-flow { flex-direction: column; }
     .rn-flow-arrow { transform: rotate(90deg); align-self: center; }
     .rn-layer-row { grid-template-columns: 1fr; gap: 6px; }
@@ -272,6 +277,7 @@
     .rn-section-head h2 { font-size: 25px; }
     .rn-section-head p { max-width: 100%; }
     .rn-trust-grid { grid-template-columns: 1fr; }
+    .rn-testi-grid { grid-template-columns: 1fr; }
     .rn-page-head { padding: 24px 0 20px; }
     .rn-page-head h1 { font-size: 30px; }
     .rn-cat-row { padding: 16px; }
@@ -514,6 +520,11 @@ function App() {
   const [cartIds, setCartIds] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [itemDemand, setItemDemand] = useState({});
+  const [testimonials, setTestimonials] = useState([]);
+  const [newTestiLabel, setNewTestiLabel] = useState("");
+  const [newTestiBlock, setNewTestiBlock] = useState("");
+  const [newTestiQuote, setNewTestiQuote] = useState("");
+  const [testiMsg, setTestiMsg] = useState("");
   const [circlePosts, setCirclePosts] = useState([]);
   const [circleComments, setCircleComments] = useState({});
   const [openThreads, setOpenThreads] = useState({});
@@ -561,6 +572,7 @@ function App() {
   const [acctMsg, setAcctMsg] = useState("");
   const [acctSaving, setAcctSaving] = useState(false);
   const [acctBlock, setAcctBlock] = useState("");
+  const [acctBatch, setAcctBatch] = useState("");
   const [bookBlock, setBookBlock] = useState("");
   const [deliverySlot, setDeliverySlot] = useState(DELIVERY_SLOTS[0]);
   const [storageBlock, setStorageBlock] = useState("");
@@ -576,6 +588,7 @@ function App() {
       if (_e === "PASSWORD_RECOVERY") setRecoveryMode(true);
     });
     refreshInventory();
+    refreshTestimonials();
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -602,6 +615,7 @@ function App() {
       setAcctName(profile.full_name || "");
       setAcctRoom(profile.room_info || "");
       setAcctBlock(profile.hostel_block || "");
+      setAcctBatch(profile.batch || "");
       setStorageBlock(profile.hostel_block || "");
       setStorageRoom(profile.room_info || "");
       setMoveBlock(profile.hostel_block || "");
@@ -627,6 +641,25 @@ function App() {
   async function refreshDemand() {
     const { data } = await db.rpc("get_item_demand");
     if (data) setItemDemand(Object.fromEntries(data.map(r => [r.item_id, r.demand])));
+  }
+  async function refreshTestimonials() {
+    const { data } = await db.from("testimonials").select("*").order("created_at", { ascending: false });
+    if (data) setTestimonials(data);
+  }
+  async function submitTestimonial(e) {
+    e.preventDefault();
+    if (!newTestiLabel.trim() || !newTestiQuote.trim()) { setTestiMsg("Add both a name/label and a quote."); return; }
+    const { error } = await db.from("testimonials").insert({
+      author_label: newTestiLabel.trim(), hostel_block: newTestiBlock.trim() || null, quote: newTestiQuote.trim(),
+    });
+    if (error) { setTestiMsg("Couldn't add: " + error.message); return; }
+    setNewTestiLabel(""); setNewTestiBlock(""); setNewTestiQuote(""); setTestiMsg("");
+    refreshTestimonials();
+  }
+  async function deleteTestimonial(id) {
+    const { error } = await db.from("testimonials").delete().eq("id", id);
+    if (error) { alert("Couldn't delete: " + error.message); return; }
+    refreshTestimonials();
   }
   async function refreshCirclePosts() {
     const { data } = await db.from("circles_posts").select("*").order("created_at", { ascending: false });
@@ -752,6 +785,13 @@ function App() {
 
   function stockOf(id) { const row = inventory.find(i => i.item_id === id); return row ? row.stock : 0; }
   function priceOf(id) { const row = inventory.find(i => i.item_id === id); return row ? row.price : 0; }
+  function imageOf(id) { const row = inventory.find(i => i.item_id === id); return row ? row.image_url : null; }
+  function ItemVisual(id, size, iconName) {
+    size = size || 20;
+    const url = imageOf(id);
+    if (url) return h("img", { src: url, alt: ITEM_DEFS[id] ? ITEM_DEFS[id].name : id, style: { width: size * 1.9, height: size * 1.9, objectFit: "cover", borderRadius: 10, flexShrink: 0 } });
+    return ItemIcon(iconName, size);
+  }
   const isBundle = cartIds.length === Object.keys(ITEM_DEFS).length;
   const cartTotal = isBundle ? BUNDLE_PRICE : cartIds.reduce((s, id) => s + priceOf(id), 0);
   const allItemsSum = Object.keys(ITEM_DEFS).reduce((s, id) => s + priceOf(id), 0);
@@ -808,10 +848,10 @@ function App() {
   async function saveAccountProfile(e) {
     e.preventDefault();
     setAcctSaving(true); setAcctMsg("");
-    const { error } = await db.from("profiles").update({ full_name: acctName.trim(), room_info: acctRoom.trim(), hostel_block: acctBlock }).eq("id", session.user.id);
+    const { error } = await db.from("profiles").update({ full_name: acctName.trim(), room_info: acctRoom.trim(), hostel_block: acctBlock, batch: acctBatch }).eq("id", session.user.id);
     setAcctSaving(false);
     if (error) { setAcctMsg("Couldn't save: " + error.message); return; }
-    setProfile(p => ({ ...p, full_name: acctName.trim(), room_info: acctRoom.trim(), hostel_block: acctBlock }));
+    setProfile(p => ({ ...p, full_name: acctName.trim(), room_info: acctRoom.trim(), hostel_block: acctBlock, batch: acctBatch }));
     setAcctMsg("Saved.");
   }
   async function changeAccountPassword(e) {
@@ -876,6 +916,17 @@ function App() {
     const cur = stockOf(itemId);
     const { error } = await db.from("inventory").update({ stock: Math.max(0, cur + delta) }).eq("item_id", itemId);
     if (error) { alert("Couldn't update stock: " + error.message); return; }
+    refreshInventory();
+  }
+  async function uploadItemImage(itemId, file) {
+    if (!file) return;
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path = itemId + "-" + Date.now() + "." + ext;
+    const { error: upErr } = await db.storage.from("item-images").upload(path, file, { upsert: true });
+    if (upErr) { alert("Couldn't upload image: " + upErr.message); return; }
+    const { data } = db.storage.from("item-images").getPublicUrl(path);
+    const { error } = await db.from("inventory").update({ image_url: data.publicUrl }).eq("item_id", itemId);
+    if (error) { alert("Couldn't save image: " + error.message); return; }
     refreshInventory();
   }
 
@@ -946,7 +997,7 @@ function App() {
         h("div", { className: "rn-kit-panel" },
           h("span", { className: "rn-kit-label" }, "What's in the room-setup bundle"),
           h("div", { className: "rn-kit-grid" }, Object.keys(ITEM_DEFS).map(id =>
-            h("div", { key: id, className: "rn-kit-chip" }, ItemIcon(ITEM_DEFS[id].icon, 17), h("div", { className: "rn-kit-chip-name" }, ITEM_DEFS[id].name), h("div", { className: "rn-kit-chip-price" }, money(priceOf(id)), " alone"))
+            h("div", { key: id, className: "rn-kit-chip" }, ItemVisual(id, 17, ITEM_DEFS[id].icon), h("div", { className: "rn-kit-chip-name" }, ITEM_DEFS[id].name), h("div", { className: "rn-kit-chip-price" }, money(priceOf(id)), " alone"))
           )),
           h("div", { className: "rn-kit-price-tag" }, h("div", null, h("b", null, money(BUNDLE_PRICE)), h("span", null, " full bundle, one semester")), bundleSavings > 0 && h("span", null, "save ", money(bundleSavings)))
         )
@@ -956,6 +1007,13 @@ function App() {
         h("div", { className: "rn-section-head" }, h("h2", { className: "rn-display" }, "Rent without the rental anxiety."), h("p", null, "The questions students actually have before they book, answered up front.")),
         h("div", { className: "rn-trust-grid" }, TRUST_POINTS.map(t => h("div", { key: t.title, className: "rn-trust-card" }, ItemIcon(t.icon, 18, "ink"), h("h4", null, t.title), h("p", null, t.desc),
           t.title === "Damage protection" && h("button", { className: "rn-link-btn", style: { marginTop: 8 }, onClick: () => setPolicyOpen(true) }, "View wear & damage policy")
+        )))
+      ),
+      testimonials.length > 0 && h("section", { className: "rn-section" },
+        h("div", { className: "rn-section-head" }, h("h2", { className: "rn-display" }, "What students are saying.")),
+        h("div", { className: "rn-testi-grid" }, testimonials.map(t => h("div", { key: t.id, className: "rn-testi-card" },
+          h("p", { className: "rn-testi-quote" }, "“", t.quote, "”"),
+          h("div", { className: "rn-testi-author" }, t.author_label, t.hostel_block && h("span", { style: { fontWeight: 400, color: "var(--ink-faint)" } }, " · ", t.hostel_block))
         )))
       ),
       h("section", { className: "rn-section" },
@@ -1001,6 +1059,7 @@ function App() {
             const stock = stockOf(id);
             return h("div", { key: id, className: "rn-chip " + (selected ? "selected" : ""), ...chipA11y("checkbox", selected, () => toggleItem(id)) },
               h("span", { className: "rn-chip-check" }, Icon(selected ? "check" : "circle", 18)),
+              ItemVisual(id, 16, ITEM_DEFS[id].icon),
               h("div", null,
                 h("span", { className: "rn-chip-name" }, ITEM_DEFS[id].name),
                 h("span", { className: "rn-chip-price" }, money(priceOf(id)), "/sem", stock < LOW_STOCK && h("span", { className: "rn-chip-low" }, " \u00b7 ", stock, " left")),
@@ -1124,6 +1183,7 @@ function App() {
           h("h3", null, "Profile"),
           h("form", { onSubmit: saveAccountProfile },
             h("div", { className: "rn-field" }, h("label", null, "Full name"), h("input", { value: acctName, onChange: e => setAcctName(e.target.value) })),
+            h("div", { className: "rn-field" }, h("label", null, "Batch"), h("input", { value: acctBatch, onChange: e => setAcctBatch(e.target.value), placeholder: "e.g. 2026" })),
             HostelField(acctBlock, acctRoom, setAcctBlock, setAcctRoom),
             h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: acctSaving }, acctSaving ? "Saving\u2026" : "Save changes")
           )
@@ -1164,7 +1224,14 @@ function App() {
   function CirclesView() {
     const kindIcon = { Announcement: "clipboard", Event: "mic", Marketplace: "boxes" };
     return h(React.Fragment, null,
-      h("div", { className: "rn-circles-head" }, h("b", null, "IBS Hyderabad"), h("span", null, "Your campus"), h("div", { className: "rn-tag-row" }, h("span", { className: "rn-tag" }, "Batch 2026"), h("span", { className: "rn-tag" }, "MBA"), h("span", { className: "rn-tag" }, "Hostel"))),
+      h("div", { className: "rn-circles-head" }, h("b", null, "IBS Hyderabad"), h("span", null, "Your campus"),
+        (profile?.batch || profile?.hostel_block)
+          ? h("div", { className: "rn-tag-row" },
+              profile?.batch && h("span", { className: "rn-tag" }, "Batch ", profile.batch),
+              profile?.hostel_block && h("span", { className: "rn-tag" }, profile.hostel_block)
+            )
+          : session && h("div", { style: { marginTop: 8 } }, h("button", { className: "rn-link-btn", style: { color: "#F3A9C4" }, onClick: () => goTo("account") }, "Add your batch & hostel block →"))
+      ),
       h("div", { className: "rn-section-head" },
         h("h2", { className: "rn-display", style: { fontSize: 26 } }, "Trending on campus"),
         session && h("button", { className: "rn-btn rn-btn-primary", onClick: () => setNewPostOpen(v => !v) }, Icon("plus", 16), newPostOpen ? "Cancel" : "New post")
@@ -1335,9 +1402,15 @@ function App() {
       ),
       h("div", { className: "rn-admin-section" }, h("h3", null, "Inventory"),
         h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
-          h("thead", null, h("tr", null, h("th", null, "Item"), h("th", null, "Price / semester"), h("th", null, "Stock"), h("th", null))),
+          h("thead", null, h("tr", null, h("th", null, "Photo"), h("th", null, "Item"), h("th", null, "Price / semester"), h("th", null, "Stock"), h("th", null))),
           h("tbody", null, inventory.map(it => h("tr", { key: it.item_id },
-            h("td", null, h("div", { className: "rn-inv-row" }, ItemIcon(ITEM_DEFS[it.item_id] ? ITEM_DEFS[it.item_id].icon : "boxes", 16), h("span", { style: { fontWeight: 600 } }, it.name))),
+            h("td", null,
+              h("label", { style: { cursor: "pointer", display: "inline-block" } },
+                ItemVisual(it.item_id, 16, ITEM_DEFS[it.item_id] ? ITEM_DEFS[it.item_id].icon : "boxes"),
+                h("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: e => uploadItemImage(it.item_id, e.target.files[0]) })
+              )
+            ),
+            h("td", null, h("div", { className: "rn-inv-row" }, h("span", { style: { fontWeight: 600 } }, it.name))),
             h("td", null, money(it.price)),
             h("td", null, it.stock < LOW_STOCK ? h("span", { className: "rn-chip-low" }, Icon("alert", 13), " ", it.stock) : it.stock),
             h("td", null, h("div", { className: "rn-stock-controls" },
@@ -1371,6 +1444,24 @@ function App() {
             h("td", null, m.move_type === "move-in" ? "Move-in" : "Move-out"),
             h("td", null, formatDate(m.move_date, true)), h("td", null, m.notes || "\u2014"),
             h("td", null, h("select", { className: "rn-status-select", value: m.status, onChange: e => updateMoveStatus(m.id, e.target.value) }, MOVE_STATUSES.map(st => h("option", { key: st, value: st }, st))))
+          )))
+        ))
+      ),
+      h("div", { className: "rn-admin-section" }, h("h3", null, "Testimonials"),
+        h("p", { className: "rn-note", style: { marginTop: -6 } }, "Only add real quotes from real students — this shows publicly on the home page."),
+        h("form", { onSubmit: submitTestimonial, style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start", marginBottom: 18 } },
+          h("input", { value: newTestiLabel, onChange: e => setNewTestiLabel(e.target.value), placeholder: "Name or “Hostel Block A student”", style: { flex: "1 1 200px" } }),
+          h("input", { value: newTestiBlock, onChange: e => setNewTestiBlock(e.target.value), placeholder: "Hostel block (optional)", style: { flex: "1 1 140px" } }),
+          h("input", { value: newTestiQuote, onChange: e => setNewTestiQuote(e.target.value), placeholder: "Quote", style: { flex: "2 1 260px" } }),
+          h("button", { className: "rn-btn rn-btn-primary", type: "submit" }, "Add")
+        ),
+        testiMsg && h("p", { className: "rn-note" }, testiMsg),
+        testimonials.length === 0 ? h("p", { className: "rn-note" }, "No testimonials yet.") :
+        h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+          h("thead", null, h("tr", null, h("th", null, "Author"), h("th", null, "Block"), h("th", null, "Quote"), h("th", null))),
+          h("tbody", null, testimonials.map(t => h("tr", { key: t.id },
+            h("td", null, t.author_label), h("td", null, t.hostel_block || "—"), h("td", null, t.quote),
+            h("td", null, h("button", { className: "rn-btn rn-btn-ghost", onClick: () => deleteTestimonial(t.id) }, "Delete"))
           )))
         ))
       )
