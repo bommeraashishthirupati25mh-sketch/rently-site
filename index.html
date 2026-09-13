@@ -574,6 +574,8 @@ function App() {
   const [semEnd, setSemEnd] = useState(() => addDaysISO(145));
   const [semEditing, setSemEditing] = useState(false);
   const [lastBookingId, setLastBookingId] = useState(null);
+  const [verifyOtp, setVerifyOtp] = useState({});
+  const [verifyOtpMsg, setVerifyOtpMsg] = useState({});
   const [busy, setBusy] = useState(false);
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -934,6 +936,16 @@ function App() {
     const { error } = await db.from("bookings").update({ status }).eq("id", id);
     if (error) { alert("Couldn't update that booking: " + error.message); return; }
     refreshAllBookings();
+  }
+  function confirmDelivery(booking) {
+    const entered = (verifyOtp[booking.id] || "").trim();
+    if (entered !== booking.pickup_otp) {
+      setVerifyOtpMsg(prev => ({ ...prev, [booking.id]: "That code doesn't match — ask the student to show it again." }));
+      return;
+    }
+    setVerifyOtp(prev => { const next = { ...prev }; delete next[booking.id]; return next; });
+    setVerifyOtpMsg(prev => { const next = { ...prev }; delete next[booking.id]; return next; });
+    updateStatus(booking.id, "Delivered");
   }
   async function adjustStock(itemId, delta) {
     const cur = stockOf(itemId);
@@ -1549,7 +1561,15 @@ function App() {
               h("td", null, h("div", { className: "rn-item-tags" }, b.items.length === Object.keys(ITEM_DEFS).length ? h("span", { className: "rn-item-tag" }, "Full bundle") : b.items.map(iid => h("span", { key: iid, className: "rn-item-tag" }, ITEM_DEFS[iid] ? ITEM_DEFS[iid].name : iid)))),
               h("td", null, StatusPill(b.status)),
               h("td", null, b.status === "Confirmed"
-                ? h("button", { className: "rn-btn rn-btn-dark", onClick: () => updateStatus(b.id, "Delivered") }, "Mark delivered")
+                ? (b.pickup_otp
+                    ? h("div", { style: { display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" } },
+                        h("div", { style: { display: "flex", gap: 6 } },
+                          h("input", { value: verifyOtp[b.id] || "", onChange: e => setVerifyOtp(prev => ({ ...prev, [b.id]: e.target.value })), placeholder: "6-digit code", style: { width: 100 } }),
+                          h("button", { className: "rn-btn rn-btn-dark", onClick: () => confirmDelivery(b) }, "Confirm")
+                        ),
+                        verifyOtpMsg[b.id] && h("span", { style: { fontSize: 12, color: "var(--magenta-dark)" } }, verifyOtpMsg[b.id])
+                      )
+                    : h("button", { className: "rn-btn rn-btn-dark", onClick: () => updateStatus(b.id, "Delivered") }, "Mark delivered"))
                 : h("button", { className: "rn-btn rn-btn-ghost", onClick: () => updateStatus(b.id, "Returned") }, "Mark returned"))
             )))
           )),
