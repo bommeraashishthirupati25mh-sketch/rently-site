@@ -532,6 +532,8 @@ function App() {
   const [cartIds, setCartIds] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [itemDemand, setItemDemand] = useState({});
+  const [itemManifest, setItemManifest] = useState([]);
+  const [allProfiles, setAllProfiles] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
   const [newTestiLabel, setNewTestiLabel] = useState("");
   const [newTestiBlock, setNewTestiBlock] = useState("");
@@ -637,9 +639,9 @@ function App() {
       setMoveRoom(profile.room_info || "");
       setSemStart(profile.semester_start || addDaysISO(7));
       setSemEnd(profile.semester_end || addDaysISO(145));
-      if (profile.role === "admin") { refreshAllBookings(); refreshInventory(); refreshAllStorage(); refreshAllMoves(); }
+      if (profile.role === "admin") { refreshAllBookings(); refreshInventory(); refreshAllStorage(); refreshAllMoves(); refreshAllProfiles(); }
       else if (profile.role === "transporter") { refreshAllBookings(); refreshAllStorage(); refreshAllMoves(); }
-      else if (profile.role === "partner") { refreshInventory(); refreshDemand(); }
+      else if (profile.role === "partner") { refreshInventory(); refreshDemand(); refreshManifest(); }
       else { refreshMyBookings(); refreshMyStorage(); refreshMyMoves(); }
     }
   }, [profile]);
@@ -656,6 +658,19 @@ function App() {
   async function refreshDemand() {
     const { data } = await db.rpc("get_item_demand");
     if (data) setItemDemand(Object.fromEntries(data.map(r => [r.item_id, r.demand])));
+  }
+  async function refreshManifest() {
+    const { data } = await db.rpc("get_item_manifest");
+    if (data) setItemManifest(data);
+  }
+  async function refreshAllProfiles() {
+    const { data } = await db.from("profiles").select("*").order("created_at");
+    if (data) setAllProfiles(data);
+  }
+  async function setUserRole(id, role) {
+    const { error } = await db.from("profiles").update({ role }).eq("id", id);
+    if (error) { alert("Couldn't update role: " + error.message); return; }
+    refreshAllProfiles();
   }
   async function refreshTestimonials() {
     const { data } = await db.from("testimonials").select("*").order("created_at", { ascending: false });
@@ -1541,6 +1556,20 @@ function App() {
             h("td", null, h("button", { className: "rn-btn rn-btn-ghost", onClick: () => deleteTestimonial(t.id) }, "Delete"))
           )))
         ))
+      ),
+      h("div", { className: "rn-admin-section" }, h("h3", null, "Manage roles"),
+        h("p", { className: "rn-note", style: { marginTop: -6 } }, "Promote an account after they've signed up normally — e.g. set a logistics driver to “transporter” or a rental partner contact to “partner”."),
+        h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+          h("thead", null, h("tr", null, h("th", null, "Email"), h("th", null, "Name"), h("th", null, "Role"))),
+          h("tbody", null, allProfiles.map(p => h("tr", { key: p.id },
+            h("td", null, p.email || "—"), h("td", null, p.full_name || "—"),
+            h("td", null, p.id === profile.id
+              ? h("span", { style: { color: "var(--ink-faint)" } }, p.role, " (you)")
+              : h("select", { className: "rn-status-select", value: p.role, onChange: e => setUserRole(p.id, e.target.value) },
+                  ["student", "admin", "transporter", "partner"].map(r => h("option", { key: r, value: r }, r))
+                ))
+          )))
+        ))
       )
     );
   }
@@ -1621,7 +1650,20 @@ function App() {
             h("td", null, short ? h("span", { className: "rn-chip-low" }, Icon("alert", 13), " Short by ", demand - it.stock) : h("span", { style: { color: "var(--ink-soft)" } }, "OK"))
           );
         }))
-      ))
+      )),
+      h("div", { className: "rn-admin-section" }, h("h3", null, "Order manifest"),
+        h("p", { className: "rn-note", style: { marginTop: -6 } }, "What's needed and by when — no student names or rooms, just quantities."),
+        itemManifest.length === 0
+          ? h("p", { className: "rn-note" }, "Nothing on order right now.")
+          : h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+              h("thead", null, h("tr", null, h("th", null, "Item"), h("th", null, "Needed by"), h("th", null, "Quantity"))),
+              h("tbody", null, itemManifest.map((row, i) => h("tr", { key: row.item_id + row.needed_by + i },
+                h("td", null, ITEM_DEFS[row.item_id] ? ITEM_DEFS[row.item_id].name : row.item_id),
+                h("td", null, formatDate(row.needed_by, true)),
+                h("td", null, row.quantity)
+              )))
+            ))
+      )
     );
   }
 
