@@ -155,7 +155,7 @@
   .rn-receipt-row b { font-family: 'Big Shoulders Display'; font-size: 16px; }
   .rn-dash-greeting { font-size: 32px; margin: 0 0 6px; }
   .rn-dash-sub { color: var(--ink-soft); font-size: 15px; margin: 0 0 28px; }
-  .rn-dash-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 36px; }
+  .rn-dash-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 36px; }
   .rn-dash-card { border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; background: #fff; }
   .rn-dash-card.muted { opacity: 0.55; }
   .rn-dash-card .rn-item-icon { margin-bottom: 14px; }
@@ -336,13 +336,6 @@ const ITEM_DEFS = {
     box: ["Study lamp", "USB charging cable"],
     dimensions: "Compact desk footprint",
   },
-  cycle: {
-    name: "Cycle", icon: "bike",
-    blurb: "Single-speed campus cycle with a combination lock included.",
-    specs: ["Single-speed \u2014 low maintenance for campus riding", "Combination lock included"],
-    box: ["Cycle", "Combination lock"],
-    dimensions: "Standard adult frame",
-  },
   storage: {
     name: "Storage unit", icon: "archive",
     blurb: "Stackable fabric unit, cleared for hostel inspection.",
@@ -350,22 +343,35 @@ const ITEM_DEFS = {
     box: ["Storage unit"],
     dimensions: "Stackable fabric unit",
   },
-  iron: {
-    name: "Iron", icon: "zap",
-    blurb: "1000W dry iron, complies with hostel power limits.",
-    specs: ["1000W dry iron", "Complies with hostel power limits"],
-    box: ["Iron"],
-    dimensions: "Standard dry iron",
+  extension_board: {
+    name: "Extension board", icon: "zap",
+    blurb: "6-socket surge-protected power strip \u2014 no heating element, hostel-safe.",
+    specs: ["6 sockets with individual switches", "Built-in surge protection", "2m cable length"],
+    box: ["Extension board"],
+    dimensions: "Standard 6-socket strip",
+  },
+  chair: {
+    name: "Study chair", icon: "chair",
+    blurb: "Padded, ergonomic desk chair \u2014 a real upgrade over the standard hostel stool.",
+    specs: ["Padded seat and backrest", "Ergonomic support for long study sessions", "Sturdy, stable frame"],
+    box: ["Study chair"],
+    dimensions: "Standard desk-chair size",
+  },
+  wardrobe: {
+    name: "Wardrobe organizer", icon: "wardrobe",
+    blurb: "Foldable fabric wardrobe with shelves and a hanging rod \u2014 extra storage without extra furniture.",
+    specs: ["Multiple shelf compartments", "Hanging rod for shirts and jackets", "Foldable, no assembly tools needed"],
+    box: ["Wardrobe organizer"],
+    dimensions: "Foldable fabric wardrobe",
   },
 };
 const CATEGORIES = [
   { key: "sleep", label: "Sleep", itemIds: ["mattress"] },
-  { key: "study", label: "Study", itemIds: ["table", "lamp"] },
-  { key: "move", label: "Move", itemIds: ["cycle"] },
-  { key: "store", label: "Store", itemIds: ["storage"] },
-  { key: "care", label: "Care", itemIds: ["iron"] },
+  { key: "study", label: "Study", itemIds: ["table", "lamp", "chair"] },
+  { key: "store", label: "Store", itemIds: ["storage", "wardrobe"] },
+  { key: "care", label: "Care", itemIds: ["extension_board"] },
 ];
-const BUNDLE_PRICE = 2250;
+const BUNDLE_PRICE = 2100;
 const MOVE_PRICE = 300;
 const UPI_ID = "ashish261105--3@okaxis";
 const LOW_STOCK = 30;
@@ -441,6 +447,8 @@ const ICON_PATHS = {
   boxes: '<path d="M3 8l6-3 6 3-6 3-6-3z"/><path d="M3 8v7l6 3 6-3V8"/><path d="M15 11l6-3v7l-6 3"/><path d="M9 11v7"/>',
   repeat: '<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
   clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="4" rx="1"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="16" y2="15"/>',
+  chair: '<path d="M6 3v8"/><path d="M18 3v8"/><path d="M6 11h12v3a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-3z"/><path d="M8 16v5"/><path d="M16 16v5"/>',
+  wardrobe: '<rect x="4" y="2" width="16" height="20" rx="1.5"/><line x1="12" y1="2" x2="12" y2="22"/><circle cx="9.5" cy="12" r="0.6"/><circle cx="14.5" cy="12" r="0.6"/>',
 };
 function Icon(name, size, color) {
   size = size || 18;
@@ -1098,7 +1106,6 @@ function App() {
   }
 
   const myLatest = myBookings[0] || null;
-  const cycleDaysLeft = Math.max(0, Math.ceil((new Date(semEnd + "T00:00:00") - new Date()) / 86400000));
   const totalBookings = bookings.length;
   const activeRentals = bookings.filter(b => b.status === "Confirmed" || b.status === "Delivered").length;
   const lowStockItems = inventory.filter(i => i.stock < LOW_STOCK);
@@ -1157,7 +1164,7 @@ function App() {
           ),
           h("div", { className: "rn-stat-row" },
             h("div", { className: "rn-stat" }, h("b", null, money(BUNDLE_PRICE)), h("span", null, "per semester, full bundle")),
-            h("div", { className: "rn-stat" }, h("b", null, "6 items"), h("span", null, "hostel-compliant, no large furniture")),
+            h("div", { className: "rn-stat" }, h("b", null, Object.keys(ITEM_DEFS).length, " items"), h("span", null, "hostel-compliant, no large furniture")),
             h("div", { className: "rn-stat" }, h("b", null, "2 dates"), h("span", null, "delivered and collected for you"))
           )
         ),
@@ -1373,8 +1380,7 @@ function App() {
       h("div", { className: "rn-dash-grid" },
         h("div", { className: "rn-dash-card " + (!myLatest ? "muted" : "") }, ItemIcon("boxes", 17), h("b", null, myLatest ? myLatest.items.length + " items" : "No booking"), h("span", null, "Room setup ", myLatest ? "\u00b7 " + myLatest.status : "")),
         h("div", { className: "rn-dash-card" }, ItemIcon("calendar", 17), h("b", null, formatDate(semEnd)), h("span", null, "Return date")),
-        h("div", { className: "rn-dash-card " + (myStorage.length === 0 ? "muted" : "") }, ItemIcon("archive", 17), h("b", null, myStorage.length === 0 ? "Not started" : (myStorage[0].bag_size === "small" ? "Small bag" : "Trunk")), h("span", null, "Storage ", myStorage.length > 0 ? "\u00b7 " + myStorage[0].status : "")),
-        h("div", { className: "rn-dash-card " + (!(myLatest && myLatest.items.includes("cycle")) ? "muted" : "") }, ItemIcon("bike", 17), h("b", null, myLatest && myLatest.items.includes("cycle") ? cycleDaysLeft + " days" : "Not rented"), h("span", null, "Cycle ", myLatest && myLatest.items.includes("cycle") ? "\u00b7 remaining" : ""))
+        h("div", { className: "rn-dash-card " + (myStorage.length === 0 ? "muted" : "") }, ItemIcon("archive", 17), h("b", null, myStorage.length === 0 ? "Not started" : (myStorage[0].bag_size === "small" ? "Small bag" : "Trunk")), h("span", null, "Storage ", myStorage.length > 0 ? "\u00b7 " + myStorage[0].status : ""))
       ),
       myLatest && (myLatest.status === "Pending" || myLatest.status === "Confirmed") && PaymentInfo(myLatest.id, priceForItems(myLatest.items), myLatest.payment_status),
       myLatest && (myLatest.status === "Pending" || myLatest.status === "Confirmed") && PickupCode(myLatest),
@@ -1608,7 +1614,7 @@ function App() {
 
   function AdminView() {
     return h(React.Fragment, null,
-      h("div", { className: "rn-page-head" }, h("h1", { className: "rn-display" }, "Admin dashboard"), h("p", null, "Track every booking and keep an eye on stock across the six catalog items.")),
+      h("div", { className: "rn-page-head" }, h("h1", { className: "rn-display" }, "Admin dashboard"), h("p", null, "Track every booking and keep an eye on stock across the ", Object.keys(ITEM_DEFS).length, " catalog items.")),
       h("div", { className: "rn-stats-row" },
         h("div", { className: "rn-stat-card" }, ItemIcon("users", 18, "ink"), h("b", null, totalBookings), h("span", null, "Total bookings")),
         h("div", { className: "rn-stat-card" }, ItemIcon("repeat", 18, "ink"), h("b", null, activeRentals), h("span", null, "Active rentals (confirmed + delivered)")),
