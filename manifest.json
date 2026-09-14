@@ -1,0 +1,16 @@
+{
+  "name": "Rently — set up your room without owning any of it",
+  "short_name": "Rently",
+  "description": "Book a hostel-compliant room-setup bundle, storage, and moves — delivered and collected on campus.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F5F1E7",
+  "theme_color": "#F5F1E7",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
