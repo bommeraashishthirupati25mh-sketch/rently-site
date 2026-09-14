@@ -862,13 +862,18 @@ function App() {
       const { data, error } = await db.auth.signUp({ email: authEmail, password: authPassword });
       setBusy(false);
       if (error) setAuthMsg(error.message);
-      else if (data.session) goTo("home"); // email confirmation is off on this project — logged in immediately
+      // email confirmation is off on this project — logged in immediately. Only
+      // force navigation home when auth was reached via the standalone header
+      // "Log in" button (view === "auth") -- when it's the inline form shown
+      // mid-Booking/Storage/Moves, stay put so the same view can pick up where
+      // the student left off instead of losing their place.
+      else if (data.session) { if (view === "auth") goTo("home"); }
       else setAuthMsg("Check your inbox to confirm your email, then log in below.");
     } else {
       const { error } = await db.auth.signInWithPassword({ email: authEmail, password: authPassword });
       setBusy(false);
       if (error) setAuthMsg(error.message);
-      else goTo("home");
+      else if (view === "auth") goTo("home");
     }
   }
   async function handleLogout() { await db.auth.signOut(); goTo("home"); }
