@@ -131,6 +131,8 @@
   .rn-logo-btn:focus-visible { outline: 2px solid var(--magenta); outline-offset: 3px; border-radius: 6px; }
   .rn-chip:hover { border-color: var(--ink-faint); }
   .rn-chip.selected { border-color: var(--magenta); background: var(--magenta-tint); }
+  .rn-chip.out-of-stock { cursor: not-allowed; opacity: 0.55; }
+  .rn-chip.out-of-stock:hover { border-color: var(--line); }
   .rn-chip-check { color: var(--ink-faint); display: flex; }
   .rn-chip.selected .rn-chip-check { color: var(--magenta-dark); }
   .rn-chip-name { font-size: 14px; font-weight: 600; display: block; }
@@ -734,10 +736,13 @@ function App() {
   }
   async function submitTestimonial(e) {
     e.preventDefault();
+    if (busy) return;
     if (!newTestiLabel.trim() || !newTestiQuote.trim()) { setTestiMsg("Add both a name/label and a quote."); return; }
+    setBusy(true);
     const { error } = await db.from("testimonials").insert({
       author_label: newTestiLabel.trim(), hostel_block: newTestiBlock.trim() || null, quote: newTestiQuote.trim(),
     });
+    setBusy(false);
     if (error) { setTestiMsg("Couldn't add: " + error.message); return; }
     setNewTestiLabel(""); setNewTestiBlock(""); setNewTestiQuote(""); setTestiMsg("");
     refreshTestimonials();
@@ -761,11 +766,13 @@ function App() {
   async function submitComment(postId, parentCommentId, draftKey, e) {
     e.preventDefault();
     const body = (commentDraft[draftKey] || "").trim();
-    if (!body || !session) return;
+    if (!body || !session || busy) return;
+    setBusy(true);
     const { data, error } = await db.from("circle_comments").insert({
       post_id: postId, parent_comment_id: parentCommentId, author_id: session.user.id,
       author_name: profile?.full_name || "Student", body,
     }).select().single();
+    setBusy(false);
     if (!error && data) {
       setCircleComments(prev => ({ ...prev, [postId]: [...(prev[postId] || []), data] }));
       setCommentDraft(prev => ({ ...prev, [draftKey]: "" }));
@@ -774,14 +781,16 @@ function App() {
   }
   async function submitNewPost(e) {
     e.preventDefault();
-    if (!session) return;
+    if (!session || busy) return;
     if (!newPostTitle.trim()) { setCircleMsg("Add a title first."); return; }
+    setBusy(true);
     const id = "CIR-" + Math.floor(1000 + Math.random() * 9000);
     const { error } = await db.from("circles_posts").insert({
       id, author_id: session.user.id, author_name: profile?.full_name || "Student",
       kind: newPostKind, title: newPostTitle.trim(), body: newPostBody.trim(),
       meta: newPostMeta.trim(), event_date: newPostKind === "Event" && newPostEventDate ? newPostEventDate : null,
     });
+    setBusy(false);
     if (error) { setCircleMsg("Couldn't post: " + error.message); return; }
     setNewPostTitle(""); setNewPostBody(""); setNewPostMeta(""); setNewPostEventDate(""); setNewPostOpen(false); setCircleMsg("");
     refreshCirclePosts();
@@ -953,7 +962,13 @@ function App() {
     if (window.history && window.location.pathname !== path) window.history.pushState({}, "", path);
     window.scrollTo && window.scrollTo({ top: 0, behavior: "instant" });
   }
-  function toggleItem(id) { setCartIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]); }
+  function toggleItem(id) {
+    setCartIds(prev => {
+      if (prev.includes(id)) return prev.filter(x => x !== id);
+      if (stockOf(id) <= 0) return prev;
+      return [...prev, id];
+    });
+  }
   function openProductDetail(id) { setProductDetail(id); setProductImgIndex(0); }
 
   async function handleAuth(e) {
@@ -1033,6 +1048,8 @@ function App() {
     if (!bookName.trim() || !bookBlock || !bookRoom.trim()) { setFormError("Add your name, hostel block and room number to start the booking."); return; }
     if (cartIds.length === 0) { setFormError("Pick at least one item before confirming."); return; }
     if (semStart < todayISO()) { setFormError("Your semester start date is in the past — update it in My Rently before booking a delivery."); return; }
+    const outOfStock = cartIds.filter(cid => stockOf(cid) <= 0);
+    if (outOfStock.length > 0) { setFormError("Sorry, this just sold out: " + outOfStock.map(cid => ITEM_DEFS[cid] ? ITEM_DEFS[cid].name : cid).join(", ") + ". Remove it to continue."); return; }
     setBusy(true);
     let error, id;
     const otp = String(Math.floor(100000 + Math.random() * 900000));
@@ -1237,12 +1254,13 @@ function App() {
           h("div", { className: "rn-cat-items" }, cat.itemIds.map(id => {
             const selected = cartIds.includes(id);
             const stock = stockOf(id);
-            return h("div", { key: id, className: "rn-chip " + (selected ? "selected" : ""), ...chipA11y("checkbox", selected, () => toggleItem(id)) },
+            const outOfStock = stock <= 0 && !selected;
+            return h("div", { key: id, className: "rn-chip " + (selected ? "selected" : "") + (outOfStock ? " out-of-stock" : ""), ...chipA11y("checkbox", selected, () => toggleItem(id)), "aria-disabled": outOfStock },
               h("span", { className: "rn-chip-check" }, Icon(selected ? "check" : "circle", 18)),
               ItemVisual(id, 26, ITEM_DEFS[id].icon, { clickable: true }),
               h("div", null,
                 h("span", { className: "rn-chip-name" }, ITEM_DEFS[id].name),
-                h("span", { className: "rn-chip-price" }, money(priceOf(id)), "/sem", stock < LOW_STOCK && h("span", { className: "rn-chip-low" }, " \u00b7 ", stock, " left")),
+                h("span", { className: "rn-chip-price" }, money(priceOf(id)), "/sem", outOfStock ? h("span", { className: "rn-chip-low" }, " \u00b7 Out of stock") : stock < LOW_STOCK && h("span", { className: "rn-chip-low" }, " \u00b7 ", stock, " left")),
                 h("span", { style: { display: "block", fontSize: 11.5, color: "var(--ink-faint)", marginTop: 2, maxWidth: 220 } }, ITEM_DEFS[id].blurb),
                 h("button", { className: "rn-link-btn", style: { fontSize: 11.5, marginTop: 4 }, onClick: e => { e.stopPropagation(); openProductDetail(id); } }, "View details")
               )
@@ -1484,7 +1502,7 @@ function App() {
           newPostKind === "Marketplace" && h("div", { className: "rn-field" }, h("label", null, "Price"), h("input", { value: newPostMeta, onChange: e => setNewPostMeta(e.target.value), placeholder: "e.g. ₹100/week" })),
           newPostKind === "Event" && h("div", { className: "rn-field" }, h("label", null, "Event date"), h("input", { type: "date", value: newPostEventDate, min: todayISO(), onChange: e => setNewPostEventDate(e.target.value) })),
           newPostKind === "Event" && h("div", { className: "rn-field" }, h("label", null, "Time (optional)"), h("input", { value: newPostMeta, onChange: e => setNewPostMeta(e.target.value), placeholder: "e.g. 6 PM" })),
-          h("button", { className: "rn-btn rn-btn-primary", type: "submit" }, "Post"),
+          h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: busy }, busy ? "Posting…" : "Post"),
           circleMsg && h("p", { className: "rn-note" }, circleMsg)
         )
       ),
@@ -1517,7 +1535,7 @@ function App() {
             session
               ? h("form", { onSubmit: e => submitComment(p.id, null, p.id, e), style: { display: "flex", gap: 8, marginTop: 10 } },
                   h("input", { value: commentDraft[p.id] || "", onChange: e => setCommentDraft(prev => ({ ...prev, [p.id]: e.target.value })), placeholder: "Add a comment…", style: { flex: 1 } }),
-                  h("button", { className: "rn-btn rn-btn-ghost", type: "submit" }, "Post")
+                  h("button", { className: "rn-btn rn-btn-ghost", type: "submit", disabled: busy }, "Post")
                 )
               : h("p", { style: { fontSize: 13, color: "var(--ink-faint)" } }, "Log in to comment.")
           )
@@ -1706,7 +1724,7 @@ function App() {
           h("input", { value: newTestiLabel, onChange: e => setNewTestiLabel(e.target.value), placeholder: "Name or “Hostel Block A student”", style: { flex: "1 1 200px" } }),
           h("input", { value: newTestiBlock, onChange: e => setNewTestiBlock(e.target.value), placeholder: "Hostel block (optional)", style: { flex: "1 1 140px" } }),
           h("input", { value: newTestiQuote, onChange: e => setNewTestiQuote(e.target.value), placeholder: "Quote", style: { flex: "2 1 260px" } }),
-          h("button", { className: "rn-btn rn-btn-primary", type: "submit" }, "Add")
+          h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: busy }, "Add")
         ),
         testiMsg && h("p", { className: "rn-note" }, testiMsg),
         testimonials.length === 0 ? h("p", { className: "rn-note" }, "No testimonials yet.") :
