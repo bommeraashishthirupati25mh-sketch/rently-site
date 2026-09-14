@@ -315,12 +315,48 @@ const { useState, useEffect } = React;
 const h = React.createElement;
 
 const ITEM_DEFS = {
-  mattress: { name: "Mattress topper", icon: "bed", blurb: "High-density foam, single cot size 36\" x 75\" x 2\" \u2014 fits standard hostel cots." },
-  table:    { name: "Study table",     icon: "table", blurb: "Foldable, 2.5 ft x 1.5 ft \u2014 sized for shared hostel rooms." },
-  lamp:     { name: "Study lamp",      icon: "lamp", blurb: "Flexible-neck LED, USB-rechargeable, two brightness settings." },
-  cycle:    { name: "Cycle",           icon: "bike", blurb: "Single-speed campus cycle with a combination lock included." },
-  storage:  { name: "Storage unit",    icon: "archive", blurb: "Stackable fabric unit, cleared for hostel inspection." },
-  iron:     { name: "Iron",            icon: "zap", blurb: "1000W dry iron, complies with hostel power limits." },
+  mattress: {
+    name: "Mattress topper", icon: "bed",
+    blurb: "High-density foam, single cot size 36\" x 75\" x 2\" \u2014 fits standard hostel cots.",
+    specs: ["Foam filling for support", "High-density foam \u2014 holds shape through the semester", "Removable, washable cover"],
+    box: ["Mattress topper", "Mattress cover"],
+    dimensions: "36\" x 75\" x 2\" (single cot size)",
+  },
+  table: {
+    name: "Study table", icon: "table",
+    blurb: "Foldable, 2.5 ft x 1.5 ft \u2014 sized for shared hostel rooms.",
+    specs: ["Foldable design \u2014 stows flat when not in use", "Sized for shared hostel rooms"],
+    box: ["Study table"],
+    dimensions: "2.5 ft x 1.5 ft",
+  },
+  lamp: {
+    name: "Study lamp", icon: "lamp",
+    blurb: "Flexible-neck LED, USB-rechargeable, two brightness settings.",
+    specs: ["Flexible neck \u2014 aim the light where you need it", "USB-rechargeable, no batteries needed", "Two brightness settings"],
+    box: ["Study lamp", "USB charging cable"],
+    dimensions: "Compact desk footprint",
+  },
+  cycle: {
+    name: "Cycle", icon: "bike",
+    blurb: "Single-speed campus cycle with a combination lock included.",
+    specs: ["Single-speed \u2014 low maintenance for campus riding", "Combination lock included"],
+    box: ["Cycle", "Combination lock"],
+    dimensions: "Standard adult frame",
+  },
+  storage: {
+    name: "Storage unit", icon: "archive",
+    blurb: "Stackable fabric unit, cleared for hostel inspection.",
+    specs: ["Stackable fabric design \u2014 saves floor space", "Cleared for hostel inspection"],
+    box: ["Storage unit"],
+    dimensions: "Stackable fabric unit",
+  },
+  iron: {
+    name: "Iron", icon: "zap",
+    blurb: "1000W dry iron, complies with hostel power limits.",
+    specs: ["1000W dry iron", "Complies with hostel power limits"],
+    box: ["Iron"],
+    dimensions: "Standard dry iron",
+  },
 };
 const CATEGORIES = [
   { key: "sleep", label: "Sleep", itemIds: ["mattress"] },
@@ -409,9 +445,9 @@ function Icon(name, size, color) {
   size = size || 18;
   return h("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: color || "currentColor", strokeWidth: 1.75, strokeLinecap: "round", strokeLinejoin: "round", dangerouslySetInnerHTML: { __html: ICON_PATHS[name] || "" } });
 }
-function ItemIcon(iconName, size, tone) {
+function ItemIcon(iconName, size, tone, onClick) {
   size = size || 20;
-  return h("span", { className: "rn-item-icon " + (tone === "ink" ? "rn-tone-ink" : ""), style: { width: size * 1.9, height: size * 1.9 } }, Icon(iconName, size));
+  return h("span", { className: "rn-item-icon " + (tone === "ink" ? "rn-tone-ink" : ""), style: { width: size * 1.9, height: size * 1.9, cursor: onClick ? "pointer" : undefined }, onClick }, Icon(iconName, size));
 }
 function money(n) { return "\u20b9" + Number(n).toLocaleString("en-IN"); }
 function dateToISO(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
@@ -600,6 +636,7 @@ function App() {
   const [moveRoom, setMoveRoom] = useState("");
   const [policyOpen, setPolicyOpen] = useState(false);
   const [lightboxImage, setLightboxImage] = useState(null);
+  const [productDetail, setProductDetail] = useState(null);
 
   useEffect(() => {
     db.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
@@ -831,14 +868,52 @@ function App() {
     opts = opts || {};
     const url = imageOf(id);
     const name = ITEM_DEFS[id] ? ITEM_DEFS[id].name : id;
+    const openDetail = opts.clickable ? (e => { e.stopPropagation(); setProductDetail(id); }) : undefined;
     if (url) {
       return h("img", {
         src: url, alt: name,
-        style: { width: size * 1.9, height: size * 1.9, objectFit: "cover", borderRadius: 10, flexShrink: 0, cursor: opts.clickable ? "zoom-in" : undefined },
-        onClick: opts.clickable ? e => { e.stopPropagation(); setLightboxImage({ url, alt: name }); } : undefined,
+        style: { width: size * 1.9, height: size * 1.9, objectFit: "cover", borderRadius: 10, flexShrink: 0, cursor: opts.clickable ? "pointer" : undefined },
+        onClick: openDetail,
       });
     }
-    return ItemIcon(iconName, size);
+    return ItemIcon(iconName, size, undefined, openDetail);
+  }
+  function ProductDetailModal() {
+    const id = productDetail;
+    if (!id) return null;
+    const def = ITEM_DEFS[id];
+    const url = imageOf(id);
+    const selected = cartIds.includes(id);
+    const stock = stockOf(id);
+    return h("div", { style: { position: "fixed", inset: 0, background: "rgba(21,46,41,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150, padding: 20, overflowY: "auto" }, onClick: () => setProductDetail(null) },
+      h("div", { style: { background: "#fff", borderRadius: 18, maxWidth: 640, width: "100%", maxHeight: "88vh", overflowY: "auto" }, onClick: e => e.stopPropagation() },
+        h("div", { style: { position: "relative" } },
+          url
+            ? h("img", { src: url, alt: def.name, style: { width: "100%", height: 260, objectFit: "cover", borderRadius: "18px 18px 0 0", cursor: "zoom-in", display: "block" }, onClick: () => setLightboxImage({ url, alt: def.name }) })
+            : h("div", { style: { width: "100%", height: 220, borderRadius: "18px 18px 0 0", background: "var(--cream)", display: "flex", alignItems: "center", justifyContent: "center" } }, ItemIcon(def.icon, 46)),
+          h("button", { className: "rn-btn rn-btn-ghost", style: { position: "absolute", top: 14, right: 14, background: "#fff", padding: "6px 10px" }, onClick: () => setProductDetail(null) }, Icon("x", 16))
+        ),
+        h("div", { style: { padding: 26 } },
+          h("h2", { style: { margin: "0 0 4px", fontSize: 22 } }, def.name),
+          h("div", { style: { fontSize: 17, fontWeight: 700, color: "var(--magenta-dark)", marginBottom: 10 } }, money(priceOf(id)), h("span", { style: { fontWeight: 400, fontSize: 13, color: "var(--ink-faint)" } }, "/sem")),
+          h("p", { style: { fontSize: 14, color: "var(--ink-soft)", marginTop: 0 } }, def.blurb),
+          def.specs && h("div", { style: { marginTop: 18 } },
+            h("h4", { style: { margin: "0 0 8px", fontSize: 14 } }, "Features & Specs"),
+            h("ul", { style: { margin: 0, paddingLeft: 18, fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.7 } }, def.specs.map((s, i) => h("li", { key: i }, s)))
+          ),
+          def.box && h("div", { style: { marginTop: 16 } },
+            h("h4", { style: { margin: "0 0 8px", fontSize: 14 } }, "What's in the box?"),
+            h("ul", { style: { margin: 0, paddingLeft: 18, fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.7 } }, def.box.map((s, i) => h("li", { key: i }, s)))
+          ),
+          def.dimensions && h("div", { style: { marginTop: 16 } },
+            h("h4", { style: { margin: "0 0 4px", fontSize: 14 } }, "Dimensions"),
+            h("p", { style: { margin: 0, fontSize: 13.5, color: "var(--ink-soft)" } }, def.dimensions)
+          ),
+          stock < LOW_STOCK && h("p", { style: { fontSize: 12.5, color: "var(--magenta-dark)", marginTop: 14, fontWeight: 600 } }, "Only ", stock, " left for this semester"),
+          h("button", { className: "rn-btn rn-btn-primary", style: { width: "100%", justifyContent: "center", marginTop: 20 }, onClick: () => { toggleItem(id); setProductDetail(null); } }, selected ? "Remove from my room" : "Add to my room", Icon(selected ? "check" : "arrowRight", 16))
+        )
+      )
+    );
   }
   const isBundle = cartIds.length === Object.keys(ITEM_DEFS).length;
   const cartTotal = isBundle ? BUNDLE_PRICE : cartIds.reduce((s, id) => s + priceOf(id), 0);
@@ -1078,7 +1153,7 @@ function App() {
         h("div", { className: "rn-kit-panel" },
           h("span", { className: "rn-kit-label" }, "What's in the room-setup bundle"),
           h("div", { className: "rn-kit-grid" }, Object.keys(ITEM_DEFS).map(id =>
-            h("div", { key: id, className: "rn-kit-chip" }, ItemVisual(id, 34, ITEM_DEFS[id].icon, { clickable: true }), h("div", { className: "rn-kit-chip-name" }, ITEM_DEFS[id].name), h("div", { className: "rn-kit-chip-price" }, money(priceOf(id)), " alone"))
+            h("div", { key: id, className: "rn-kit-chip", style: { cursor: "pointer" }, onClick: () => setProductDetail(id) }, ItemVisual(id, 34, ITEM_DEFS[id].icon, { clickable: true }), h("div", { className: "rn-kit-chip-name" }, ITEM_DEFS[id].name), h("div", { className: "rn-kit-chip-price" }, money(priceOf(id)), " alone"))
           )),
           h("div", { className: "rn-kit-price-tag" }, h("div", null, h("b", null, money(BUNDLE_PRICE)), h("span", null, " full bundle, one semester")), bundleSavings > 0 && h("span", null, "save ", money(bundleSavings)))
         )
@@ -1144,7 +1219,8 @@ function App() {
               h("div", null,
                 h("span", { className: "rn-chip-name" }, ITEM_DEFS[id].name),
                 h("span", { className: "rn-chip-price" }, money(priceOf(id)), "/sem", stock < LOW_STOCK && h("span", { className: "rn-chip-low" }, " \u00b7 ", stock, " left")),
-                h("span", { style: { display: "block", fontSize: 11.5, color: "var(--ink-faint)", marginTop: 2, maxWidth: 220 } }, ITEM_DEFS[id].blurb)
+                h("span", { style: { display: "block", fontSize: 11.5, color: "var(--ink-faint)", marginTop: 2, maxWidth: 220 } }, ITEM_DEFS[id].blurb),
+                h("button", { className: "rn-link-btn", style: { fontSize: 11.5, marginTop: 4 }, onClick: e => { e.stopPropagation(); setProductDetail(id); } }, "View details")
               )
             );
           }))
@@ -1793,6 +1869,7 @@ function App() {
       )
     ),
     PolicyModal(policyOpen, () => setPolicyOpen(false)),
+    ProductDetailModal(),
     ImageLightbox(lightboxImage, () => setLightboxImage(null))
   );
 }
