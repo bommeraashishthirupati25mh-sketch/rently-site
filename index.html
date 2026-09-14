@@ -369,6 +369,7 @@ const BUNDLE_PRICE = 600;
 const MOVE_PRICE = 300;
 const UPI_ID = "ashish261105--3@okaxis";
 const LOW_STOCK = 30;
+const MAX_ITEM_IMAGES = 3;
 const STATUSES = ["Pending", "Confirmed", "Delivered", "Returned"];
 const STORAGE_STATUSES = ["Requested", "Checked in", "Returned"];
 const MOVE_STATUSES = ["Requested", "Scheduled", "Completed"];
@@ -637,6 +638,7 @@ function App() {
   const [policyOpen, setPolicyOpen] = useState(false);
   const [lightboxImage, setLightboxImage] = useState(null);
   const [productDetail, setProductDetail] = useState(null);
+  const [productImgIndex, setProductImgIndex] = useState(0);
 
   useEffect(() => {
     db.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
@@ -862,13 +864,14 @@ function App() {
 
   function stockOf(id) { const row = inventory.find(i => i.item_id === id); return row ? row.stock : 0; }
   function priceOf(id) { const row = inventory.find(i => i.item_id === id); return row ? row.price : 0; }
-  function imageOf(id) { const row = inventory.find(i => i.item_id === id); return row ? row.image_url : null; }
+  function imagesOf(id) { const row = inventory.find(i => i.item_id === id); return (row && row.image_urls) || []; }
+  function imageOf(id) { return imagesOf(id)[0] || null; }
   function ItemVisual(id, size, iconName, opts) {
     size = size || 20;
     opts = opts || {};
     const url = imageOf(id);
     const name = ITEM_DEFS[id] ? ITEM_DEFS[id].name : id;
-    const openDetail = opts.clickable ? (e => { e.stopPropagation(); setProductDetail(id); }) : undefined;
+    const openDetail = opts.clickable ? (e => { e.stopPropagation(); openProductDetail(id); }) : undefined;
     if (url) {
       return h("img", {
         src: url, alt: name,
@@ -882,17 +885,25 @@ function App() {
     const id = productDetail;
     if (!id) return null;
     const def = ITEM_DEFS[id];
-    const url = imageOf(id);
+    const images = imagesOf(id);
+    const activeUrl = images[productImgIndex] || images[0] || null;
     const selected = cartIds.includes(id);
     const stock = stockOf(id);
     return h("div", { style: { position: "fixed", inset: 0, background: "rgba(21,46,41,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150, padding: 20, overflowY: "auto" }, onClick: () => setProductDetail(null) },
       h("div", { style: { background: "#fff", borderRadius: 18, maxWidth: 640, width: "100%", maxHeight: "88vh", overflowY: "auto" }, onClick: e => e.stopPropagation() },
         h("div", { style: { position: "relative" } },
-          url
-            ? h("img", { src: url, alt: def.name, style: { width: "100%", height: 260, objectFit: "cover", borderRadius: "18px 18px 0 0", cursor: "zoom-in", display: "block" }, onClick: () => setLightboxImage({ url, alt: def.name }) })
+          activeUrl
+            ? h("img", { src: activeUrl, alt: def.name, style: { width: "100%", height: 260, objectFit: "cover", borderRadius: "18px 18px 0 0", cursor: "zoom-in", display: "block" }, onClick: () => setLightboxImage({ url: activeUrl, alt: def.name }) })
             : h("div", { style: { width: "100%", height: 220, borderRadius: "18px 18px 0 0", background: "var(--cream)", display: "flex", alignItems: "center", justifyContent: "center" } }, ItemIcon(def.icon, 46)),
           h("button", { className: "rn-btn rn-btn-ghost", style: { position: "absolute", top: 14, right: 14, background: "#fff", padding: "6px 10px" }, onClick: () => setProductDetail(null) }, Icon("x", 16))
         ),
+        images.length > 1 && h("div", { style: { display: "flex", gap: 8, padding: "12px 26px 0" } }, images.map((url, i) =>
+          h("img", {
+            key: url, src: url, alt: def.name + " photo " + (i + 1),
+            style: { width: 54, height: 54, objectFit: "cover", borderRadius: 8, cursor: "pointer", border: i === productImgIndex ? "2px solid var(--magenta-dark)" : "2px solid transparent" },
+            onClick: () => setProductImgIndex(i),
+          })
+        )),
         h("div", { style: { padding: 26 } },
           h("h2", { style: { margin: "0 0 4px", fontSize: 22 } }, def.name),
           h("div", { style: { fontSize: 17, fontWeight: 700, color: "var(--magenta-dark)", marginBottom: 10 } }, money(priceOf(id)), h("span", { style: { fontWeight: 400, fontSize: 13, color: "var(--ink-faint)" } }, "/sem")),
@@ -929,6 +940,7 @@ function App() {
     window.scrollTo && window.scrollTo({ top: 0, behavior: "instant" });
   }
   function toggleItem(id) { setCartIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]); }
+  function openProductDetail(id) { setProductDetail(id); setProductImgIndex(0); }
 
   async function handleAuth(e) {
     e.preventDefault();
@@ -1063,26 +1075,25 @@ function App() {
     const idx = url.indexOf(marker);
     return idx === -1 ? null : url.slice(idx + marker.length);
   }
-  async function uploadItemImage(itemId, file) {
+  async function addItemImage(itemId, file) {
     if (!file) return;
-    const oldUrl = imageOf(itemId);
+    const current = imagesOf(itemId);
+    if (current.length >= MAX_ITEM_IMAGES) { alert("You can add up to " + MAX_ITEM_IMAGES + " photos per item — remove one first."); return; }
     const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
     const path = itemId + "-" + Date.now() + "." + ext;
     const { error: upErr } = await db.storage.from("item-images").upload(path, file, { upsert: true });
     if (upErr) { alert("Couldn't upload image: " + upErr.message); return; }
     const { data } = db.storage.from("item-images").getPublicUrl(path);
-    const { error } = await db.from("inventory").update({ image_url: data.publicUrl }).eq("item_id", itemId);
+    const { error } = await db.from("inventory").update({ image_urls: [...current, data.publicUrl] }).eq("item_id", itemId);
     if (error) { alert("Couldn't save image: " + error.message); return; }
-    const oldPath = oldUrl && storagePathFromUrl(oldUrl);
-    if (oldPath) await db.storage.from("item-images").remove([oldPath]);
     refreshInventory();
   }
-  async function removeItemImage(itemId) {
-    const oldUrl = imageOf(itemId);
-    const { error } = await db.from("inventory").update({ image_url: null }).eq("item_id", itemId);
+  async function removeItemImage(itemId, url) {
+    const current = imagesOf(itemId);
+    const { error } = await db.from("inventory").update({ image_urls: current.filter(u => u !== url) }).eq("item_id", itemId);
     if (error) { alert("Couldn't remove image: " + error.message); return; }
-    const oldPath = oldUrl && storagePathFromUrl(oldUrl);
-    if (oldPath) await db.storage.from("item-images").remove([oldPath]);
+    const path = storagePathFromUrl(url);
+    if (path) await db.storage.from("item-images").remove([path]);
     refreshInventory();
   }
 
@@ -1153,7 +1164,7 @@ function App() {
         h("div", { className: "rn-kit-panel" },
           h("span", { className: "rn-kit-label" }, "What's in the room-setup bundle"),
           h("div", { className: "rn-kit-grid" }, Object.keys(ITEM_DEFS).map(id =>
-            h("div", { key: id, className: "rn-kit-chip", style: { cursor: "pointer" }, onClick: () => setProductDetail(id) }, ItemVisual(id, 34, ITEM_DEFS[id].icon, { clickable: true }), h("div", { className: "rn-kit-chip-name" }, ITEM_DEFS[id].name), h("div", { className: "rn-kit-chip-price" }, money(priceOf(id)), " alone"))
+            h("div", { key: id, className: "rn-kit-chip", style: { cursor: "pointer" }, onClick: () => openProductDetail(id) }, ItemVisual(id, 34, ITEM_DEFS[id].icon, { clickable: true }), h("div", { className: "rn-kit-chip-name" }, ITEM_DEFS[id].name), h("div", { className: "rn-kit-chip-price" }, money(priceOf(id)), " alone"))
           )),
           h("div", { className: "rn-kit-price-tag" }, h("div", null, h("b", null, money(BUNDLE_PRICE)), h("span", null, " full bundle, one semester")), bundleSavings > 0 && h("span", null, "save ", money(bundleSavings)))
         )
@@ -1220,7 +1231,7 @@ function App() {
                 h("span", { className: "rn-chip-name" }, ITEM_DEFS[id].name),
                 h("span", { className: "rn-chip-price" }, money(priceOf(id)), "/sem", stock < LOW_STOCK && h("span", { className: "rn-chip-low" }, " \u00b7 ", stock, " left")),
                 h("span", { style: { display: "block", fontSize: 11.5, color: "var(--ink-faint)", marginTop: 2, maxWidth: 220 } }, ITEM_DEFS[id].blurb),
-                h("button", { className: "rn-link-btn", style: { fontSize: 11.5, marginTop: 4 }, onClick: e => { e.stopPropagation(); setProductDetail(id); } }, "View details")
+                h("button", { className: "rn-link-btn", style: { fontSize: 11.5, marginTop: 4 }, onClick: e => { e.stopPropagation(); openProductDetail(id); } }, "View details")
               )
             );
           }))
@@ -1621,12 +1632,21 @@ function App() {
           h("thead", null, h("tr", null, h("th", null, "Photo"), h("th", null, "Item"), h("th", null, "Price / semester"), h("th", null, "Stock"), h("th", null))),
           h("tbody", null, inventory.map(it => h("tr", { key: it.item_id },
             h("td", null,
-              h("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 } },
-                h("label", { style: { cursor: "pointer", display: "inline-block" }, title: it.image_url ? "Click to replace photo" : "Click to add a photo" },
-                  ItemVisual(it.item_id, 22, ITEM_DEFS[it.item_id] ? ITEM_DEFS[it.item_id].icon : "boxes"),
-                  h("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: e => uploadItemImage(it.item_id, e.target.files[0]) })
+              h("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, minWidth: 130 } },
+                h("div", { style: { display: "flex", gap: 4, flexWrap: "wrap" } },
+                  imagesOf(it.item_id).map(url => h("div", { key: url, style: { position: "relative" } },
+                    h("img", { src: url, alt: it.name, style: { width: 40, height: 40, objectFit: "cover", borderRadius: 8, display: "block" } }),
+                    h("button", {
+                      title: "Remove photo", onClick: () => removeItemImage(it.item_id, url),
+                      style: { position: "absolute", top: -6, right: -6, width: 17, height: 17, borderRadius: "50%", border: "1px solid var(--line)", background: "#fff", cursor: "pointer", fontSize: 10, lineHeight: 1, padding: 0 },
+                    }, "×")
+                  )),
+                  imagesOf(it.item_id).length < MAX_ITEM_IMAGES && h("label", { style: { cursor: "pointer", width: 40, height: 40, borderRadius: 8, border: "1.5px dashed var(--line)", display: "flex", alignItems: "center", justifyContent: "center" }, title: "Add a photo" },
+                    Icon("plus", 16),
+                    h("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: e => addItemImage(it.item_id, e.target.files[0]) })
+                  )
                 ),
-                it.image_url && h("button", { className: "rn-link-btn", style: { fontSize: 11.5 }, onClick: () => removeItemImage(it.item_id) }, "Remove")
+                h("span", { style: { fontSize: 11, color: "var(--ink-faint)" } }, imagesOf(it.item_id).length, "/", MAX_ITEM_IMAGES, " photos")
               )
             ),
             h("td", null, h("div", { className: "rn-inv-row" }, h("span", { style: { fontWeight: 600 } }, it.name))),
