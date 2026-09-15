@@ -573,12 +573,12 @@ function Feed(items, verified) {
 function HostelField(block, room, onBlock, onRoom) {
   return h(React.Fragment, null,
     h("div", { className: "rn-field" }, h("label", null, "Hostel block"),
-      h("select", { className: "rn-status-select", style: { width: "100%", padding: "11px 13px" }, value: block, onChange: e => onBlock(e.target.value) },
+      h("select", { className: "rn-status-select", style: { width: "100%", padding: "11px 13px" }, value: block, onChange: e => onBlock(e.target.value), required: true },
         h("option", { value: "" }, "Select block…"),
         HOSTEL_BLOCKS.map(b => h("option", { key: b, value: b }, b))
       )
     ),
-    h("div", { className: "rn-field" }, h("label", null, "Room number"), h("input", { value: room, onChange: e => onRoom(e.target.value), placeholder: "e.g. 214" }))
+    h("div", { className: "rn-field" }, h("label", null, "Room number"), h("input", { value: room, onChange: e => onRoom(e.target.value), placeholder: "e.g. 214", required: true }))
   );
 }
 function PolicyModal(open, onClose) {
@@ -1188,6 +1188,7 @@ function App() {
   const deliveryBatches = clusterDeliveryDates(activeBookings.map(b => b.semester_start), 3);
 
   const isStaffAccount = profile && (profile.role === "admin" || profile.role === "transporter" || profile.role === "partner");
+  const canPostToCircles = !!session && !(profile && (profile.role === "partner" || profile.role === "transporter"));
   const mainNav = isStaffAccount
     ? [{ id: "home", label: "Home" }, { id: "circles", label: "Circles" }]
     : [
@@ -1352,8 +1353,8 @@ function App() {
         h("h3", null, "Booking details"),
         !session && h("p", { className: "rn-note" }, "Log in or create an account below to finish booking \u2014 your selection will be waiting."),
         !session && AuthForm({ compact: true }),
-        session && h(React.Fragment, null,
-          h("div", { className: "rn-field" }, h("label", null, "Full name"), h("input", { value: bookName, onChange: e => setBookName(e.target.value), placeholder: "e.g. Rohan Mehta" })),
+        session && h("form", { onSubmit: e => { e.preventDefault(); confirmBooking(); } },
+          h("div", { className: "rn-field" }, h("label", null, "Full name"), h("input", { value: bookName, onChange: e => setBookName(e.target.value), placeholder: "e.g. Rohan Mehta", required: true })),
           HostelField(bookBlock, bookRoom, setBookBlock, setBookRoom),
           h("div", { className: "rn-field" }, h("label", null, "Semester"), h("div", { style: { fontSize: 14.5, padding: "11px 13px", borderRadius: 9, border: "1.5px solid var(--line)", background: "var(--cream)" } }, semesterLabel)),
           h("div", { className: "rn-field" }, h("label", null, "Delivery slot, move-in day"),
@@ -1364,7 +1365,7 @@ function App() {
               )
             ))
           ),
-          h("button", { className: "rn-btn rn-btn-primary", style: { width: "100%", justifyContent: "center" }, onClick: confirmBooking, disabled: cartIds.length === 0 || busy }, busy ? "Booking\u2026" : "Start booking", Icon("arrowRight", 16))
+          h("button", { className: "rn-btn rn-btn-primary", style: { width: "100%", justifyContent: "center" }, type: "submit", disabled: cartIds.length === 0 || busy }, busy ? "Booking\u2026" : "Start booking", Icon("arrowRight", 16))
         ),
         formError && h("div", { className: "rn-error" }, formError)
       ),
@@ -1529,7 +1530,7 @@ function App() {
       h("b", { style: { fontSize: 13 } }, comment.author_name || "Student"),
       h("span", { style: { fontSize: 12, color: "var(--ink-faint)", marginLeft: 6 } }, formatDate(comment.created_at.slice(0, 10))),
       h("p", { style: { margin: "2px 0 4px", fontSize: 13.5 } }, comment.body),
-      session && h("button", { className: "rn-link-btn", style: { fontSize: 12.5 }, onClick: () => setReplyTarget(prev => ({ ...prev, [postId]: isReplying ? null : comment.id })) }, isReplying ? "Cancel" : "Reply"),
+      canPostToCircles && h("button", { className: "rn-link-btn", style: { fontSize: 12.5 }, onClick: () => setReplyTarget(prev => ({ ...prev, [postId]: isReplying ? null : comment.id })) }, isReplying ? "Cancel" : "Reply"),
       profile?.role === "admin" && h("button", { className: "rn-link-btn", style: { fontSize: 12.5, marginLeft: 10, color: "var(--magenta-dark)" }, onClick: () => deleteComment(postId, comment.id) }, "Delete"),
       isReplying && h("form", { onSubmit: e => submitComment(postId, comment.id, draftKey, e), style: { display: "flex", gap: 8, marginTop: 6 } },
         h("input", { value: commentDraft[draftKey] || "", onChange: e => setCommentDraft(prev => ({ ...prev, [draftKey]: e.target.value })), placeholder: "Write a reply…", style: { flex: 1 } }),
@@ -1551,10 +1552,11 @@ function App() {
       ),
       h("div", { className: "rn-section-head" },
         h("h2", { className: "rn-display", style: { fontSize: 26 } }, "Trending on campus"),
-        session && h("button", { className: "rn-btn rn-btn-primary", onClick: () => newPostOpen ? cancelPostForm() : setNewPostOpen(true) }, Icon("plus", 16), newPostOpen ? "Cancel" : "New post")
+        canPostToCircles && h("button", { className: "rn-btn rn-btn-primary", onClick: () => newPostOpen ? cancelPostForm() : setNewPostOpen(true) }, Icon("plus", 16), newPostOpen ? "Cancel" : "New post")
       ),
       !session && h("p", { className: "rn-note" }, "Log in to see and post in Circles."),
-      session && newPostOpen && h("div", { className: "rn-acct-card", style: { marginBottom: 24 } },
+      session && !canPostToCircles && h("p", { className: "rn-note" }, "Partner and transporter accounts can read Circles but don't post or comment — that's for students."),
+      canPostToCircles && newPostOpen && h("div", { className: "rn-acct-card", style: { marginBottom: 24 } },
         h("h4", { style: { margin: "0 0 12px" } }, editingPostId ? "Edit post" : "New post"),
         h("form", { onSubmit: submitNewPost },
           h("div", { className: "rn-field" }, h("label", null, "Type"),
@@ -1599,12 +1601,12 @@ function App() {
           open && h("div", { style: { marginTop: 8 } },
             tree.length === 0 && h("p", { style: { fontSize: 13, color: "var(--ink-faint)", margin: 0 } }, "No comments yet."),
             tree.map(c => CommentNode(p.id, c, 0)),
-            session
+            canPostToCircles
               ? h("form", { onSubmit: e => submitComment(p.id, null, p.id, e), style: { display: "flex", gap: 8, marginTop: 10 } },
                   h("input", { value: commentDraft[p.id] || "", onChange: e => setCommentDraft(prev => ({ ...prev, [p.id]: e.target.value })), placeholder: "Add a comment…", style: { flex: 1 } }),
                   h("button", { className: "rn-btn rn-btn-ghost", type: "submit", disabled: busy }, "Post")
                 )
-              : h("p", { style: { fontSize: 13, color: "var(--ink-faint)" } }, "Log in to comment.")
+              : h("p", { style: { fontSize: 13, color: "var(--ink-faint)" } }, session ? "Partner and transporter accounts can't comment." : "Log in to comment.")
           )
         );
       })),
