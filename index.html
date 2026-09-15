@@ -386,6 +386,7 @@ const CATEGORIES = [
 ];
 const BUNDLE_PRICE = 2100;
 const MOVE_PRICE = 300;
+const SEMESTER_BASELINE_DAYS = 90; // prices are set for a standard 3-month semester; longer/shorter picks scale from here
 const UPI_ID = "ashish261105--3@okaxis";
 const LOW_STOCK = 30;
 const MAX_ITEM_IMAGES = 3;
@@ -482,6 +483,9 @@ function chipA11y(role, checked, onActivate) {
   };
 }
 function addDaysISO(days) { const d = new Date(); d.setDate(d.getDate() + days); return dateToISO(d); }
+function semDurationDays(start, end) { return Math.max(1, Math.round((new Date(end + "T00:00:00") - new Date(start + "T00:00:00")) / 86400000)); }
+function scaleForDuration(start, end) { return semDurationDays(start, end) / SEMESTER_BASELINE_DAYS; }
+function roundMoney(n) { return Math.round(n / 10) * 10; }
 function formatDate(iso, withYear) {
   if (!iso) return "";
   const d = new Date(iso + "T00:00:00");
@@ -658,7 +662,7 @@ function App() {
   const [bookRoom, setBookRoom] = useState("");
   const [formError, setFormError] = useState("");
   const [semStart, setSemStart] = useState(() => addDaysISO(7));
-  const [semEnd, setSemEnd] = useState(() => addDaysISO(145));
+  const [semEnd, setSemEnd] = useState(() => addDaysISO(7 + SEMESTER_BASELINE_DAYS));
   const [semEditing, setSemEditing] = useState(false);
   const [lastBookingId, setLastBookingId] = useState(null);
   const [verifyOtp, setVerifyOtp] = useState({});
@@ -969,7 +973,7 @@ function App() {
         )),
         h("div", { style: { padding: 26 } },
           h("h2", { style: { margin: "0 0 4px", fontSize: 22 } }, def.name),
-          h("div", { style: { fontSize: 17, fontWeight: 700, color: "var(--magenta-dark)", marginBottom: 10 } }, money(priceOf(id)), h("span", { style: { fontWeight: 400, fontSize: 13, color: "var(--ink-faint)" } }, "/sem")),
+          h("div", { style: { fontSize: 17, fontWeight: 700, color: "var(--magenta-dark)", marginBottom: 10 } }, money(scaledPriceOf(id)), h("span", { style: { fontWeight: 400, fontSize: 13, color: "var(--ink-faint)" } }, "/sem")),
           h("p", { style: { fontSize: 14, color: "var(--ink-soft)", marginTop: 0 } }, def.blurb),
           def.specs && h("div", { style: { marginTop: 18 } },
             h("h4", { style: { margin: "0 0 8px", fontSize: 14 } }, "Features & Specs"),
@@ -990,9 +994,14 @@ function App() {
     );
   }
   const isBundle = cartIds.length === Object.keys(ITEM_DEFS).length;
-  const cartTotal = isBundle ? BUNDLE_PRICE : cartIds.reduce((s, id) => s + priceOf(id), 0);
-  const allItemsSum = Object.keys(ITEM_DEFS).reduce((s, id) => s + priceOf(id), 0);
-  const bundleSavings = Math.max(0, allItemsSum - BUNDLE_PRICE);
+  const semScale = scaleForDuration(semStart, semEnd);
+  const scaledBundlePrice = roundMoney(BUNDLE_PRICE * semScale);
+  function scaledPriceOf(id) { return roundMoney(priceOf(id) * semScale); }
+  const cartTotal = isBundle ? scaledBundlePrice : roundMoney(cartIds.reduce((s, id) => s + priceOf(id), 0) * semScale);
+  const allItemsSum = roundMoney(Object.keys(ITEM_DEFS).reduce((s, id) => s + priceOf(id), 0) * semScale);
+  const bundleSavings = Math.max(0, allItemsSum - scaledBundlePrice);
+  const baselineAllItemsSum = Object.keys(ITEM_DEFS).reduce((s, id) => s + priceOf(id), 0);
+  const baselineBundleSavings = Math.max(0, baselineAllItemsSum - BUNDLE_PRICE);
   const semesterLabel = formatDate(semStart) + " \u2013 " + formatDate(semEnd, true);
 
   function goTo(v) {
@@ -1186,6 +1195,7 @@ function App() {
   ];
 
   function SemesterBar(compact) {
+    const durMonths = Math.round((semDurationDays(semStart, semEnd) / 30) * 10) / 10;
     return h("div", { className: "rn-semester-bar" },
       h("div", null, h("b", null, "Your semester"), !semEditing && h("span", { style: { marginLeft: 10, color: "var(--ink-soft)", fontSize: 13.5 } }, semesterLabel)),
       semEditing
@@ -1193,6 +1203,7 @@ function App() {
             h("input", { type: "date", value: semStart, min: todayISO(), onChange: e => setSemStart(e.target.value) }),
             Icon("arrowRight", 14, "var(--ink-faint)"),
             h("input", { type: "date", value: semEnd, min: semStart, onChange: e => setSemEnd(e.target.value) }),
+            h("span", { style: { fontSize: 12.5, color: "var(--ink-faint)" } }, "≈ ", durMonths, " mo · prices scale to this length"),
             h("button", { className: "rn-link-btn", onClick: saveSemester }, "Done")
           )
         : h("button", { className: "rn-link-btn", onClick: () => setSemEditing(true) }, compact ? "Change dates" : "Not moving in July? Change dates")
@@ -1243,7 +1254,7 @@ function App() {
           h("div", { className: "rn-kit-grid" }, Object.keys(ITEM_DEFS).map(id =>
             h("div", { key: id, className: "rn-kit-chip", style: { cursor: "pointer" }, onClick: () => openProductDetail(id) }, ItemVisual(id, 34, ITEM_DEFS[id].icon, { clickable: true }), h("div", { className: "rn-kit-chip-name" }, ITEM_DEFS[id].name), h("div", { className: "rn-kit-chip-price" }, money(priceOf(id)), " alone"))
           )),
-          h("div", { className: "rn-kit-price-tag" }, h("div", null, h("b", null, money(BUNDLE_PRICE)), h("span", null, " full bundle, one semester")), bundleSavings > 0 && h("span", null, "save ", money(bundleSavings)))
+          h("div", { className: "rn-kit-price-tag" }, h("div", null, h("b", null, money(BUNDLE_PRICE)), h("span", null, " full bundle, one semester")), baselineBundleSavings > 0 && h("span", null, "save ", money(baselineBundleSavings)))
         )
       ),
       SemesterBar(false),
@@ -1307,7 +1318,7 @@ function App() {
               ItemVisual(id, 26, ITEM_DEFS[id].icon, { clickable: true }),
               h("div", null,
                 h("span", { className: "rn-chip-name" }, ITEM_DEFS[id].name),
-                h("span", { className: "rn-chip-price" }, money(priceOf(id)), "/sem", outOfStock ? h("span", { className: "rn-chip-low" }, " \u00b7 Out of stock") : stock < LOW_STOCK && h("span", { className: "rn-chip-low" }, " \u00b7 ", stock, " left")),
+                h("span", { className: "rn-chip-price" }, money(scaledPriceOf(id)), "/sem", outOfStock ? h("span", { className: "rn-chip-low" }, " \u00b7 Out of stock") : stock < LOW_STOCK && h("span", { className: "rn-chip-low" }, " \u00b7 ", stock, " left")),
                 h("span", { style: { display: "block", fontSize: 11.5, color: "var(--ink-faint)", marginTop: 2, maxWidth: 220 } }, ITEM_DEFS[id].blurb),
                 h("button", { className: "rn-link-btn", style: { fontSize: 11.5, marginTop: 4 }, onClick: e => { e.stopPropagation(); openProductDetail(id); } }, "View details")
               )
@@ -1317,7 +1328,7 @@ function App() {
         h("div", { className: "rn-summary-card" },
           h("h3", { style: { fontSize: 17, margin: "0 0 14px" } }, "Your setup"),
           cartIds.length === 0 && h("p", { style: { fontSize: 13.5, color: "var(--ink-soft)" } }, "Nothing picked yet \u2014 tap a category to start."),
-          cartIds.map(id => h("div", { key: id, className: "rn-summary-row" }, h("span", null, ITEM_DEFS[id].name), h("span", null, isBundle ? "\u2014" : money(priceOf(id))))),
+          cartIds.map(id => h("div", { key: id, className: "rn-summary-row" }, h("span", null, ITEM_DEFS[id].name), h("span", null, isBundle ? "\u2014" : money(scaledPriceOf(id))))),
           h("div", { className: "rn-summary-total" },
             h("span", null, "Total"),
             isBundle && bundleSavings > 0
@@ -1326,7 +1337,7 @@ function App() {
           ),
           isBundle
             ? h("p", { style: { fontSize: 12.5, color: "var(--magenta-dark)", fontWeight: 600, marginTop: 8 } }, "Full-bundle rate applied \u2014 you saved ", money(bundleSavings), ".")
-            : cartIds.length > 0 && h("div", { className: "rn-upsell" }, "Add the rest of the room for a flat rate.", h("button", { className: "rn-btn rn-btn-ghost", onClick: () => setCartIds(Object.keys(ITEM_DEFS)) }, "Add the full bundle for ", money(BUNDLE_PRICE))),
+            : cartIds.length > 0 && h("div", { className: "rn-upsell" }, "Add the rest of the room for a flat rate.", h("button", { className: "rn-btn rn-btn-ghost", onClick: () => setCartIds(Object.keys(ITEM_DEFS)) }, "Add the full bundle for ", money(scaledBundlePrice))),
           h("button", { className: "rn-link-btn", style: { marginTop: 10 }, onClick: () => setPolicyOpen(true) }, "View wear & damage policy"),
           h("button", { className: "rn-btn rn-btn-primary", style: { width: "100%", justifyContent: "center", marginTop: 16 }, onClick: () => goTo("booking"), disabled: cartIds.length === 0 }, "Complete my room", Icon("arrowRight", 16))
         )
@@ -1359,7 +1370,7 @@ function App() {
       h("div", { className: "rn-summary-card" },
         h("h3", { style: { fontSize: 17, margin: "0 0 14px" } }, "Order summary"),
         cartIds.length === 0 && h("p", { style: { fontSize: 13.5, color: "var(--ink-soft)" } }, "No items selected yet \u2014 head back and build your room."),
-        cartIds.map(id => h("div", { key: id, className: "rn-summary-row" }, h("span", null, ITEM_DEFS[id].name), h("span", null, isBundle ? "\u2014" : money(priceOf(id))))),
+        cartIds.map(id => h("div", { key: id, className: "rn-summary-row" }, h("span", null, ITEM_DEFS[id].name), h("span", null, isBundle ? "\u2014" : money(scaledPriceOf(id))))),
         h("div", { className: "rn-summary-total" },
           h("span", null, "Total"),
           isBundle && bundleSavings > 0
@@ -1371,8 +1382,10 @@ function App() {
     );
   }
 
-  function priceForItems(items) {
-    return items.length === Object.keys(ITEM_DEFS).length ? BUNDLE_PRICE : items.reduce((s, id) => s + priceOf(id), 0);
+  function priceForItems(items, start, end) {
+    const scale = scaleForDuration(start || semStart, end || semEnd);
+    const base = items.length === Object.keys(ITEM_DEFS).length ? BUNDLE_PRICE : items.reduce((s, id) => s + priceOf(id), 0);
+    return roundMoney(base * scale);
   }
   function PaymentInfo(id, amount, paymentStatus) {
     if (paymentStatus === "Paid") {
@@ -1432,7 +1445,7 @@ function App() {
         h("div", { className: "rn-receipt-row" }, h("span", null, "Semester"), h("span", null, semesterLabel)),
         h("div", { className: "rn-receipt-row" }, h("span", null, "Delivery slot"), h("span", null, deliverySlot))
       ),
-      lastBooking && PaymentInfo(lastBooking.id, priceForItems(lastBooking.items), lastBooking.payment_status),
+      lastBooking && PaymentInfo(lastBooking.id, priceForItems(lastBooking.items, lastBooking.semester_start, lastBooking.semester_end), lastBooking.payment_status),
       PickupCode(lastBooking),
       h("div", { style: { display: "flex", gap: 12, justifyContent: "center" } },
         h("button", { className: "rn-btn rn-btn-dark", onClick: () => goTo("dashboard") }, "Go to My Rently"),
@@ -1453,7 +1466,7 @@ function App() {
         h("div", { className: "rn-dash-card" }, ItemIcon("calendar", 17), h("b", null, formatDate(semEnd)), h("span", null, "Return date")),
         h("div", { className: "rn-dash-card " + (myStorage.length === 0 ? "muted" : "") }, ItemIcon("archive", 17), h("b", null, myStorage.length === 0 ? "Not started" : (myStorage[0].bag_size === "small" ? "Small bag" : "Trunk")), h("span", null, "Storage ", myStorage.length > 0 ? "\u00b7 " + myStorage[0].status : ""))
       ),
-      myLatest && (myLatest.status === "Pending" || myLatest.status === "Confirmed") && PaymentInfo(myLatest.id, priceForItems(myLatest.items), myLatest.payment_status),
+      myLatest && (myLatest.status === "Pending" || myLatest.status === "Confirmed") && PaymentInfo(myLatest.id, priceForItems(myLatest.items, myLatest.semester_start, myLatest.semester_end), myLatest.payment_status),
       myLatest && (myLatest.status === "Pending" || myLatest.status === "Confirmed") && PickupCode(myLatest),
       h("div", { className: "rn-admin-section" },
         h("h3", null, "Booking history"),
