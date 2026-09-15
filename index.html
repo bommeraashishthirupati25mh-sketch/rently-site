@@ -578,7 +578,7 @@ function HostelField(block, room, onBlock, onRoom) {
         HOSTEL_BLOCKS.map(b => h("option", { key: b, value: b }, b))
       )
     ),
-    h("div", { className: "rn-field" }, h("label", null, "Room number"), h("input", { value: room, onChange: e => onRoom(e.target.value), placeholder: "e.g. 214", required: true }))
+    h("div", { className: "rn-field" }, h("label", null, "Room number"), h("input", { value: room, onChange: e => onRoom(e.target.value.replace(/[^0-9]/g, "")), placeholder: "e.g. 214", required: true, inputMode: "numeric", pattern: "[0-9]+", title: "Numbers only" }))
   );
 }
 function PolicyModal(open, onClose) {
@@ -1354,7 +1354,7 @@ function App() {
         !session && h("p", { className: "rn-note" }, "Log in or create an account below to finish booking \u2014 your selection will be waiting."),
         !session && AuthForm({ compact: true }),
         session && h("form", { onSubmit: e => { e.preventDefault(); confirmBooking(); } },
-          h("div", { className: "rn-field" }, h("label", null, "Full name"), h("input", { value: bookName, onChange: e => setBookName(e.target.value), placeholder: "e.g. Rohan Mehta", required: true })),
+          h("div", { className: "rn-field" }, h("label", null, "Full name"), h("input", { value: bookName, onChange: e => setBookName(e.target.value.replace(/[^A-Za-z\s]/g, "")), placeholder: "e.g. Rohan Mehta", required: true, pattern: "[A-Za-z\\s]+", title: "Letters only" })),
           HostelField(bookBlock, bookRoom, setBookBlock, setBookRoom),
           h("div", { className: "rn-field" }, h("label", null, "Semester"), h("div", { style: { fontSize: 14.5, padding: "11px 13px", borderRadius: 9, border: "1.5px solid var(--line)", background: "var(--cream)" } }, semesterLabel)),
           h("div", { className: "rn-field" }, h("label", null, "Delivery slot, move-in day"),
@@ -1500,7 +1500,7 @@ function App() {
           h("h3", null, "Profile"),
           isStaff && h("p", { className: "rn-note", style: { marginTop: -6 } }, staffLabel, " account \u2014 no hostel room or batch needed."),
           h("form", { onSubmit: saveAccountProfile },
-            h("div", { className: "rn-field" }, h("label", null, "Full name"), h("input", { value: acctName, onChange: e => setAcctName(e.target.value) })),
+            h("div", { className: "rn-field" }, h("label", null, "Full name"), h("input", { value: acctName, onChange: e => setAcctName(e.target.value.replace(/[^A-Za-z\s]/g, "")), pattern: "[A-Za-z\\s]+", title: "Letters only" })),
             !isStaff && h("div", { className: "rn-field" }, h("label", null, "Batch"), h("input", { value: acctBatch, onChange: e => setAcctBatch(e.target.value), placeholder: "e.g. 2026" })),
             !isStaff && HostelField(acctBlock, acctRoom, setAcctBlock, setAcctRoom),
             h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: acctSaving }, acctSaving ? "Saving\u2026" : "Save changes")
