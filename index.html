@@ -1487,16 +1487,20 @@ function App() {
 
   function AccountView() {
     const memberSince = profile && profile.created_at ? new Date(profile.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : "";
+    const role = profile && profile.role;
+    const isStaff = role === "admin" || role === "transporter" || role === "partner";
+    const staffLabel = role === "admin" ? "Platform Admin" : role === "transporter" ? "Logistics Crew" : "Brand Supplier";
     return h(React.Fragment, null,
       h("div", { className: "rn-page-head" }, h("h1", { className: "rn-display" }, "Your account"), h("p", null, "Update your details, change your password, and see what Rently knows about your account.")),
       acctMsg && h("p", { className: "rn-note", style: { marginTop: -10, marginBottom: 16 } }, acctMsg),
       h("div", { className: "rn-acct-grid" },
         h("div", { className: "rn-acct-card" },
           h("h3", null, "Profile"),
+          isStaff && h("p", { className: "rn-note", style: { marginTop: -6 } }, staffLabel, " account \u2014 no hostel room or batch needed."),
           h("form", { onSubmit: saveAccountProfile },
             h("div", { className: "rn-field" }, h("label", null, "Full name"), h("input", { value: acctName, onChange: e => setAcctName(e.target.value) })),
-            h("div", { className: "rn-field" }, h("label", null, "Batch"), h("input", { value: acctBatch, onChange: e => setAcctBatch(e.target.value), placeholder: "e.g. 2026" })),
-            HostelField(acctBlock, acctRoom, setAcctBlock, setAcctRoom),
+            !isStaff && h("div", { className: "rn-field" }, h("label", null, "Batch"), h("input", { value: acctBatch, onChange: e => setAcctBatch(e.target.value), placeholder: "e.g. 2026" })),
+            !isStaff && HostelField(acctBlock, acctRoom, setAcctBlock, setAcctRoom),
             h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: acctSaving }, acctSaving ? "Saving\u2026" : "Save changes")
           )
         ),
