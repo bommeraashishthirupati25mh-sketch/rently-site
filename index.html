@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>rently. — set up your room without owning any of it</title>
+<title>rently. Set up your room without owning any of it</title>
 <meta name="description" content="Rently delivers a brand-insured room-setup bundle to your hostel on move-in day and collects it on move-out day, plus semester storage and move coordination for campus students." />
 <link rel="canonical" href="https://rently-site.rently-campus.workers.dev/" />
 <meta property="og:type" content="website" />
-<meta property="og:title" content="rently. — set up your room without owning any of it" />
+<meta property="og:title" content="rently. Set up your room without owning any of it" />
 <meta property="og:description" content="Rently delivers a brand-insured room-setup bundle to your hostel on move-in day and collects it on move-out day, plus semester storage and move coordination for campus students." />
 <meta property="og:url" content="https://rently-site.rently-campus.workers.dev/" />
 <meta name="twitter:card" content="summary" />
-<meta name="twitter:title" content="rently. — set up your room without owning any of it" />
+<meta name="twitter:title" content="rently. Set up your room without owning any of it" />
 <meta name="twitter:description" content="Rently delivers a brand-insured room-setup bundle to your hostel on move-in day and collects it on move-out day, plus semester storage and move coordination for campus students." />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23152E29'/%3E%3Ctext x='19' y='45' font-family='Georgia,serif' font-weight='800' font-size='34' fill='%23fff'%3Er%3C/text%3E%3Ccircle cx='47' cy='40' r='4' fill='%23D6336C'/%3E%3C/svg%3E" />
 <link rel="manifest" href="/manifest.json" />
@@ -398,7 +398,7 @@ const HOSTEL_BLOCKS = ["Hostel A", "Hostel B", "Hostel C", "Hostel D", "Hostel E
 const DELIVERY_SLOTS = ["Morning \u00b7 10:00 AM \u2013 1:00 PM", "Afternoon \u00b7 2:00 PM \u2013 5:00 PM"];
 const LAST_UPDATED = "12 September 2026";
 const PRIVACY_SECTIONS = [
-  { h: "Information we collect", p: "Your campus email and password (handled by our authentication provider, Supabase — we never see your password in plain text), plus profile details you give us: full name, hostel block, and room number. When you book, we also store what you booked, your chosen delivery slot, and your semester dates." },
+  { h: "Information we collect", p: "Your campus email and password (handled by our authentication provider, Supabase, which never sees your password in plain text), plus profile details you give us: full name, hostel block, and room number. When you book, we also store what you booked, your chosen delivery slot, and your semester dates." },
   { h: "How we use it", p: "Solely to run the service: to create and manage your account, route deliveries and pickups to the right hostel block and room, and show admins and transport partners the bookings they need to fulfil. We don't sell your data or use it for advertising." },
   { h: "Who can see it", p: "Your booking details are visible to Rently's admin and transport-partner accounts so orders can be fulfilled. We don't share your personal information with any other third party except where required by law." },
   { h: "Data retention", p: "We keep account and booking records for as long as your account is active, plus a reasonable period afterward for record-keeping. You can request deletion of your account and associated data at any time by contacting us." },
@@ -407,7 +407,7 @@ const PRIVACY_SECTIONS = [
 ];
 const TERMS_SECTIONS = [
   { h: "Who this is for", p: "Rently is a pilot service for students on our partner campus to rent room setup items, book storage over breaks, and arrange move-in/move-out transport. You must be able to receive deliveries at a hostel block on that campus to use the service." },
-  { h: "Your account", p: "You're responsible for keeping your login credentials secure and for the accuracy of the profile details (name, hostel block, room number) you provide — deliveries are routed using this information." },
+  { h: "Your account", p: "You're responsible for keeping your login credentials secure and for the accuracy of the profile details (name, hostel block, room number) you provide, since deliveries are routed using this information." },
   { h: "Bookings & pricing", p: "Prices shown at checkout are final at the time of booking and cover the full rental for your chosen semester length; see our wear & damage policy (linked from checkout) for how normal wear and damage/loss are handled." },
   { h: "Cancellations", p: "To cancel or change a booking, request it through your account dashboard or contact us directly; we'll confirm what, if anything, is refundable based on how far along the booking is." },
   { h: "Acceptable use", p: "Don't use Rently to book on behalf of someone who isn't a verified student on the partner campus, to circumvent pricing, or to misuse the Circles community feed (no spam, no listings unrelated to campus life)." },
@@ -1030,7 +1030,7 @@ function App() {
       const { data, error } = await db.auth.signUp({ email: authEmail, password: authPassword });
       setBusy(false);
       if (error) setAuthMsg(error.message);
-      // email confirmation is off on this project — logged in immediately. Only
+      // email confirmation is off on this project, so we're logged in immediately. Only
       // force navigation home when auth was reached via the standalone header
       // "Log in" button (view === "auth") -- when it's the inline form shown
       // mid-Booking/Storage/Moves, stay put so the same view can pick up where
@@ -1099,7 +1099,7 @@ function App() {
     if (!session) { setFormError("Log in or create an account to finish booking."); return; }
     if (!bookName.trim() || !bookBlock || !bookRoom.trim()) { setFormError("Add your name, hostel block and room number to start the booking."); return; }
     if (cartIds.length === 0) { setFormError("Pick at least one item before confirming."); return; }
-    if (semStart < todayISO()) { setFormError("Your semester start date is in the past — update it in My Rently before booking a delivery."); return; }
+    if (semStart < todayISO()) { setFormError("Your semester start date is in the past. Update it in My Rently before booking a delivery."); return; }
     const outOfStock = cartIds.filter(cid => stockOf(cid) <= 0);
     if (outOfStock.length > 0) { setFormError("Sorry, this just sold out: " + outOfStock.map(cid => ITEM_DEFS[cid] ? ITEM_DEFS[cid].name : cid).join(", ") + ". Remove it to continue."); return; }
     setBusy(true);
@@ -1140,7 +1140,7 @@ function App() {
   function confirmDelivery(booking) {
     const entered = (verifyOtp[booking.id] || "").trim();
     if (entered !== booking.pickup_otp) {
-      setVerifyOtpMsg(prev => ({ ...prev, [booking.id]: "That code doesn't match — ask the student to show it again." }));
+      setVerifyOtpMsg(prev => ({ ...prev, [booking.id]: "That code doesn't match. Ask the student to show it again." }));
       return;
     }
     setVerifyOtp(prev => { const next = { ...prev }; delete next[booking.id]; return next; });
@@ -1161,7 +1161,7 @@ function App() {
   async function addItemImage(itemId, file) {
     if (!file) return;
     const current = imagesOf(itemId);
-    if (current.length >= MAX_ITEM_IMAGES) { alert("You can add up to " + MAX_ITEM_IMAGES + " photos per item — remove one first."); return; }
+    if (current.length >= MAX_ITEM_IMAGES) { alert("You can add up to " + MAX_ITEM_IMAGES + " photos per item. Remove one first."); return; }
     const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
     const path = itemId + "-" + Date.now() + "." + ext;
     const { error: upErr } = await db.storage.from("item-images").upload(path, file, { upsert: true });
@@ -1292,7 +1292,7 @@ function App() {
         h("div", { className: "rn-section-head" }, h("h2", { className: "rn-display" }, "The campus, in one feed.")),
         h("div", { className: "rn-teaser-row" },
           h("div", { className: "rn-teaser-card" }, Icon("users", 22), h("h3", null, "Circles keeps you in the loop between rentals."), h("p", null, "Batch group chats, a buy/sell board and event pages, all tied to your campus and hostel block."), Feed(CIRCLES_FEED), h("div", { style: { marginTop: 14 } }, h("button", { className: "rn-btn rn-btn-ghost", onClick: () => goTo("circles") }, "Open Circles", Icon("chevronRight", 15)))),
-          h("div", { className: "rn-teaser-card" }, Icon("mic", 22), h("h3", null, "Running a college event?"), h("p", null, "Rently Events isn't a full catalog yet — post what your club needs (speakers, projectors, decor) in Circles and our team coordinates it manually."), h("div", { style: { marginTop: "auto" } }, h("button", { className: "rn-btn rn-btn-ghost", onClick: () => { setNewPostKind("Marketplace"); setNewPostOpen(true); goTo("circles"); } }, "Request event equipment", Icon("chevronRight", 15))))
+          h("div", { className: "rn-teaser-card" }, Icon("mic", 22), h("h3", null, "Running a college event?"), h("p", null, "Rently Events isn't a full catalog yet. Post what your club needs (speakers, projectors, decor) in Circles and our team coordinates it manually."), h("div", { style: { marginTop: "auto" } }, h("button", { className: "rn-btn rn-btn-ghost", onClick: () => { setNewPostKind("Marketplace"); setNewPostOpen(true); goTo("circles"); } }, "Request event equipment", Icon("chevronRight", 15))))
         )
       ),
       h("section", { className: "rn-section", style: { borderTop: "none", paddingTop: 0 } },
@@ -1393,7 +1393,7 @@ function App() {
     if (paymentStatus === "Paid") {
       return h("div", { className: "rn-acct-card", style: { marginTop: 20, textAlign: "center" } },
         h("h3", { style: { margin: "0 0 4px" } }, "Payment"),
-        h("p", { style: { margin: 0, color: "var(--ink-soft)", fontSize: 13.5 } }, Icon("check", 14), " Marked as paid — thanks!")
+        h("p", { style: { margin: 0, color: "var(--ink-soft)", fontSize: 13.5 } }, Icon("check", 14), " Marked as paid, thanks!")
       );
     }
     const upiUri = "upi://pay?pa=" + encodeURIComponent(UPI_ID) + "&pn=" + encodeURIComponent("Rently") + "&am=" + amount + "&cu=INR&tn=" + encodeURIComponent(id);
@@ -1428,7 +1428,7 @@ function App() {
     }
     return h("div", { className: "rn-acct-card", style: { marginTop: 20, textAlign: "center" } },
       h("h3", { style: { margin: "0 0 4px" } }, "Pickup code"),
-      h("p", { style: { margin: "0 0 16px", fontSize: 13.5, color: "var(--ink-soft)" } }, "Show this to the delivery crew on move-in day — it's how they confirm the handover is really you."),
+      h("p", { style: { margin: "0 0 16px", fontSize: 13.5, color: "var(--ink-soft)" } }, "Show this to the delivery crew on move-in day. It's how they confirm the handover is really you."),
       qrUrl
         ? h("img", { src: qrUrl, alt: "Pickup QR code", style: { width: 160, height: 160, margin: "0 auto 14px", display: "block", imageRendering: "pixelated" } })
         : h("div", { style: { width: 160, height: 160, margin: "0 auto 14px", background: "var(--cream)", borderRadius: 12 } }),
@@ -1558,7 +1558,7 @@ function App() {
         canPostToCircles && h("button", { className: "rn-btn rn-btn-primary", onClick: () => newPostOpen ? cancelPostForm() : setNewPostOpen(true) }, Icon("plus", 16), newPostOpen ? "Cancel" : "New post")
       ),
       !session && h("p", { className: "rn-note" }, "Log in to see and post in Circles."),
-      session && !canPostToCircles && h("p", { className: "rn-note" }, "Partner and transporter accounts can read Circles but don't post or comment — that's for students."),
+      session && !canPostToCircles && h("p", { className: "rn-note" }, "Partner and transporter accounts can read Circles but don't post or comment. That's for students."),
       canPostToCircles && newPostOpen && h("div", { className: "rn-acct-card", style: { marginBottom: 24 } },
         h("h4", { style: { margin: "0 0 12px" } }, editingPostId ? "Edit post" : "New post"),
         h("form", { onSubmit: submitNewPost },
@@ -1613,7 +1613,7 @@ function App() {
           )
         );
       })),
-      session && circlePosts.length === 0 && h("p", { className: "rn-note" }, "No posts yet — be the first.")
+      session && circlePosts.length === 0 && h("p", { className: "rn-note" }, "No posts yet. Be the first.")
     );
   }
   function StorageView() {
@@ -1675,8 +1675,8 @@ function App() {
               h("form", { onSubmit: submitMoveBooking },
                 h("div", { className: "rn-field" }, h("label", null, "Type"),
                   h("div", { className: "rn-cat-items" },
-                    h("div", { className: "rn-chip " + (moveType === "move-in" ? "selected" : ""), ...chipA11y("radio", moveType === "move-in", () => setMoveType("move-in")) }, h("span", { className: "rn-chip-check" }, Icon(moveType === "move-in" ? "check" : "circle", 18)), h("span", { className: "rn-chip-name" }, "Move-in — ", money(MOVE_PRICE))),
-                    h("div", { className: "rn-chip " + (moveType === "move-out" ? "selected" : ""), ...chipA11y("radio", moveType === "move-out", () => setMoveType("move-out")) }, h("span", { className: "rn-chip-check" }, Icon(moveType === "move-out" ? "check" : "circle", 18)), h("span", { className: "rn-chip-name" }, "Move-out — ", money(MOVE_PRICE)))
+                    h("div", { className: "rn-chip " + (moveType === "move-in" ? "selected" : ""), ...chipA11y("radio", moveType === "move-in", () => setMoveType("move-in")) }, h("span", { className: "rn-chip-check" }, Icon(moveType === "move-in" ? "check" : "circle", 18)), h("span", { className: "rn-chip-name" }, "Move-in: ", money(MOVE_PRICE))),
+                    h("div", { className: "rn-chip " + (moveType === "move-out" ? "selected" : ""), ...chipA11y("radio", moveType === "move-out", () => setMoveType("move-out")) }, h("span", { className: "rn-chip-check" }, Icon(moveType === "move-out" ? "check" : "circle", 18)), h("span", { className: "rn-chip-name" }, "Move-out: ", money(MOVE_PRICE)))
                   )
                 ),
                 HostelField(moveBlock, moveRoom, setMoveBlock, setMoveRoom),
@@ -1722,9 +1722,9 @@ function App() {
       ),
       h("div", { className: "rn-admin-section" },
         h("h3", null, "Smart delivery batching"),
-        h("p", { style: { fontSize: 13, color: "var(--ink-soft)", margin: "-4px 0 14px", maxWidth: 520 } }, "Groups active bookings by semester start date (within a 3-day window) and recommends a shared delivery date per cluster — instead of one trip per student's own date."),
+        h("p", { style: { fontSize: 13, color: "var(--ink-soft)", margin: "-4px 0 14px", maxWidth: 520 } }, "Groups active bookings by semester start date (within a 3-day window) and recommends a shared delivery date per cluster, instead of one trip per student's own date."),
         activeBookings.length === 0
-          ? h("p", { className: "rn-note" }, "No active bookings yet — recommendations will appear once students start booking.")
+          ? h("p", { className: "rn-note" }, "No active bookings yet. Recommendations will appear once students start booking.")
           : h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, deliveryBatches.map((batch, i) => {
               const pct = Math.round((batch.count / activeBookings.length) * 100);
               return h("div", { key: batch.recommendedDate, className: "rn-acct-card", style: { padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, borderColor: i === 0 ? "var(--magenta)" : undefined } },
@@ -1814,7 +1814,7 @@ function App() {
         ))
       ),
       h("div", { className: "rn-admin-section" }, h("h3", null, "Testimonials"),
-        h("p", { className: "rn-note", style: { marginTop: -6 } }, "Only add real quotes from real students — this shows publicly on the home page."),
+        h("p", { className: "rn-note", style: { marginTop: -6 } }, "Only add real quotes from real students. This shows publicly on the home page."),
         h("form", { onSubmit: submitTestimonial, style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start", marginBottom: 18 } },
           h("input", { value: newTestiLabel, onChange: e => setNewTestiLabel(e.target.value), placeholder: "Name or “Hostel Block A student”", style: { flex: "1 1 200px" } }),
           h("input", { value: newTestiBlock, onChange: e => setNewTestiBlock(e.target.value), placeholder: "Hostel block (optional)", style: { flex: "1 1 140px" } }),
@@ -1832,7 +1832,7 @@ function App() {
         ))
       ),
       h("div", { className: "rn-admin-section" }, h("h3", null, "Manage roles"),
-        h("p", { className: "rn-note", style: { marginTop: -6 } }, "Promote an account after they've signed up normally — e.g. set a logistics driver to “transporter” or a rental partner contact to “partner”."),
+        h("p", { className: "rn-note", style: { marginTop: -6 } }, "Promote an account after they've signed up normally, e.g. set a logistics driver to “transporter” or a rental partner contact to “partner”."),
         h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
           h("thead", null, h("tr", null, h("th", null, "Email"), h("th", null, "Name"), h("th", null, "Role"))),
           h("tbody", null, allProfiles.map(p => h("tr", { key: p.id },
@@ -1926,7 +1926,7 @@ function App() {
         }))
       )),
       h("div", { className: "rn-admin-section" }, h("h3", null, "Order manifest"),
-        h("p", { className: "rn-note", style: { marginTop: -6 } }, "What's needed and by when — no student names or rooms, just quantities."),
+        h("p", { className: "rn-note", style: { marginTop: -6 } }, "What's needed and by when. No student names or rooms, just quantities."),
         itemManifest.length === 0
           ? h("p", { className: "rn-note" }, "Nothing on order right now.")
           : h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
@@ -1985,7 +1985,7 @@ function App() {
   }
 
   const staffRole = profile && (profile.role === "admin" || profile.role === "transporter" || profile.role === "partner") ? profile.role : null;
-  const staffBlocked = h("div", { className: "rn-loading" }, "Staff accounts don't book as students — use your dashboard instead.");
+  const staffBlocked = h("div", { className: "rn-loading" }, "Staff accounts don't book as students. Use your dashboard instead.");
 
   let body;
   if (recoveryMode) body = ResetPasswordView();
