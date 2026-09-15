@@ -1000,8 +1000,6 @@ function App() {
   const cartTotal = isBundle ? scaledBundlePrice : roundMoney(cartIds.reduce((s, id) => s + priceOf(id), 0) * semScale);
   const allItemsSum = roundMoney(Object.keys(ITEM_DEFS).reduce((s, id) => s + priceOf(id), 0) * semScale);
   const bundleSavings = Math.max(0, allItemsSum - scaledBundlePrice);
-  const baselineAllItemsSum = Object.keys(ITEM_DEFS).reduce((s, id) => s + priceOf(id), 0);
-  const baselineBundleSavings = Math.max(0, baselineAllItemsSum - BUNDLE_PRICE);
   const semesterLabel = formatDate(semStart) + " \u2013 " + formatDate(semEnd, true);
 
   function goTo(v) {
@@ -1189,10 +1187,13 @@ function App() {
   const activeBookings = bookings.filter(b => b.status === "Pending" || b.status === "Confirmed");
   const deliveryBatches = clusterDeliveryDates(activeBookings.map(b => b.semester_start), 3);
 
-  const mainNav = [
-    { id: "home", label: "Home" }, { id: "build", label: "Rent" },
-    { id: "circles", label: "Circles" }, { id: "storage", label: "Storage" }, { id: "moves", label: "Moves" },
-  ];
+  const isStaffAccount = profile && (profile.role === "admin" || profile.role === "transporter" || profile.role === "partner");
+  const mainNav = isStaffAccount
+    ? [{ id: "home", label: "Home" }, { id: "circles", label: "Circles" }]
+    : [
+        { id: "home", label: "Home" }, { id: "build", label: "Rent" },
+        { id: "circles", label: "Circles" }, { id: "storage", label: "Storage" }, { id: "moves", label: "Moves" },
+      ];
 
   function SemesterBar(compact) {
     const durMonths = Math.round((semDurationDays(semStart, semEnd) / 30) * 10) / 10;
@@ -1244,7 +1245,7 @@ function App() {
             h("button", { className: "rn-btn rn-btn-ghost", onClick: () => goTo("build") }, "Explore rentals")
           ),
           h("div", { className: "rn-stat-row" },
-            h("div", { className: "rn-stat" }, h("b", null, money(BUNDLE_PRICE)), h("span", null, "per semester, full bundle")),
+            h("div", { className: "rn-stat" }, h("b", null, money(scaledBundlePrice)), h("span", null, "per semester, full bundle")),
             h("div", { className: "rn-stat" }, h("b", null, Object.keys(ITEM_DEFS).length, " items"), h("span", null, "hostel-compliant, no large furniture")),
             h("div", { className: "rn-stat" }, h("b", null, "2 dates"), h("span", null, "delivered and collected for you"))
           )
@@ -1252,9 +1253,9 @@ function App() {
         h("div", { className: "rn-kit-panel" },
           h("span", { className: "rn-kit-label" }, "What's in the room-setup bundle"),
           h("div", { className: "rn-kit-grid" }, Object.keys(ITEM_DEFS).map(id =>
-            h("div", { key: id, className: "rn-kit-chip", style: { cursor: "pointer" }, onClick: () => openProductDetail(id) }, ItemVisual(id, 34, ITEM_DEFS[id].icon, { clickable: true }), h("div", { className: "rn-kit-chip-name" }, ITEM_DEFS[id].name), h("div", { className: "rn-kit-chip-price" }, money(priceOf(id)), " alone"))
+            h("div", { key: id, className: "rn-kit-chip", style: { cursor: "pointer" }, onClick: () => openProductDetail(id) }, ItemVisual(id, 34, ITEM_DEFS[id].icon, { clickable: true }), h("div", { className: "rn-kit-chip-name" }, ITEM_DEFS[id].name), h("div", { className: "rn-kit-chip-price" }, money(scaledPriceOf(id)), " alone"))
           )),
-          h("div", { className: "rn-kit-price-tag" }, h("div", null, h("b", null, money(BUNDLE_PRICE)), h("span", null, " full bundle, one semester")), baselineBundleSavings > 0 && h("span", null, "save ", money(baselineBundleSavings)))
+          h("div", { className: "rn-kit-price-tag" }, h("div", null, h("b", null, money(scaledBundlePrice)), h("span", null, " full bundle, one semester")), bundleSavings > 0 && h("span", null, "save ", money(bundleSavings)))
         )
       ),
       SemesterBar(false),
@@ -1974,11 +1975,14 @@ function App() {
     );
   }
 
+  const staffRole = profile && (profile.role === "admin" || profile.role === "transporter" || profile.role === "partner") ? profile.role : null;
+  const staffBlocked = h("div", { className: "rn-loading" }, "Staff accounts don't book as students — use your dashboard instead.");
+
   let body;
   if (recoveryMode) body = ResetPasswordView();
   else if (view === "home") body = HomeView();
-  else if (view === "build") body = BuildView();
-  else if (view === "booking") body = BookingView();
+  else if (view === "build") body = staffRole ? staffBlocked : BuildView();
+  else if (view === "booking") body = staffRole ? staffBlocked : BookingView();
   else if (view === "confirmation") body = ConfirmationView();
   else if (view === "dashboard") body = session ? DashboardView() : AuthForm({});
   else if (view === "account") body = session ? AccountView() : AuthForm({});
@@ -1986,8 +1990,8 @@ function App() {
   else if (view === "transport") body = (profile && profile.role === "transporter") ? TransportView() : h("div", { className: "rn-loading" }, "Transport access only.");
   else if (view === "partner") body = (profile && profile.role === "partner") ? PartnerView() : h("div", { className: "rn-loading" }, "Partner access only.");
   else if (view === "circles") body = CirclesView();
-  else if (view === "storage") body = StorageView();
-  else if (view === "moves") body = MovesView();
+  else if (view === "storage") body = staffRole ? staffBlocked : StorageView();
+  else if (view === "moves") body = staffRole ? staffBlocked : MovesView();
   else if (view === "auth") body = AuthForm({});
   else if (view === "privacy") body = PrivacyView();
   else if (view === "terms") body = TermsView();
