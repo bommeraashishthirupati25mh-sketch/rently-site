@@ -408,20 +408,20 @@ const PRIVACY_SECTIONS = [
 const TERMS_SECTIONS = [
   { h: "Who this is for", p: "Rently is a pilot service for students on our partner campus to rent room setup items, book storage over breaks, and arrange move-in/move-out transport. You must be able to receive deliveries at a hostel block on that campus to use the service." },
   { h: "Your account", p: "You're responsible for keeping your login credentials secure and for the accuracy of the profile details (name, hostel block, room number) you provide — deliveries are routed using this information." },
-  { h: "Bookings, pricing & deposits", p: "Prices shown at checkout are final at the time of booking. A refundable deposit may be held per item; see our wear & damage policy (linked from checkout) for how deposits, normal wear, and damage/loss are handled." },
+  { h: "Bookings & pricing", p: "Prices shown at checkout are final at the time of booking and cover the full rental for your chosen semester length; see our wear & damage policy (linked from checkout) for how normal wear and damage/loss are handled." },
   { h: "Cancellations", p: "To cancel or change a booking, request it through your account dashboard or contact us directly; we'll confirm what, if anything, is refundable based on how far along the booking is." },
   { h: "Acceptable use", p: "Don't use Rently to book on behalf of someone who isn't a verified student on the partner campus, to circumvent pricing, or to misuse the Circles community feed (no spam, no listings unrelated to campus life)." },
   { h: "Liability", p: "Rently coordinates delivery, storage and moves through partner operators; we aim for care and reliability but items are provided ‘as is’ subject to the damage policy above, and we aren't liable for delays caused by circumstances outside our reasonable control." },
   { h: "Changes & termination", p: "We may update these terms as the pilot evolves; continued use after an update means you accept the new terms. We may suspend accounts that violate acceptable use." },
 ];
 const DAMAGE_POLICY = [
-  { h: "Refundable deposit", p: "A refundable deposit is held per item at booking and released in full once everything is returned in its original condition." },
+  { h: "What you pay at booking", p: "The price shown at checkout is the full rental cost for your chosen semester length \u2014 there's no separate deposit collected on top of it today." },
   { h: "Normal wear", p: "Ordinary signs of use \u2014 minor scuffs, faded fabric \u2014 are expected and never charged." },
-  { h: "Damage or loss", p: "Breakage, missing parts, or unreturned items are charged at a fixed repair/replacement rate, shown per item before you confirm a booking, never negotiated after the fact." },
+  { h: "Damage or loss", p: "Breakage, missing parts, or unreturned items are assessed at pickup and charged based on the item's listed rental value \u2014 we'll always tell you the amount and reason before asking for payment, never after the fact with no explanation." },
 ];
 const TRUST_POINTS = [
   { icon: "shield", title: "Partner-backed", desc: "Every item comes through an established rental partner \u2014 not an anonymous seller on a group chat." },
-  { icon: "fileCheck", title: "Damage protection", desc: "Fixed policies on wear, damage and deposits, shown before you book, not negotiated after." },
+  { icon: "fileCheck", title: "Damage protection", desc: "Fixed policies on normal wear and damage, shown before you book, not negotiated after." },
   { icon: "truck", title: "Campus delivery", desc: "Delivered and collected in a coordinated campus window \u2014 not a random courier at a random time." },
   { icon: "userCheck", title: "Verified students", desc: "Every booking is tied to a verified campus account, so deliveries go to the right room, every time." },
 ];
@@ -1216,7 +1216,7 @@ function App() {
     const role = profile && profile.role;
     const acctView = role === "admin" ? "admin" : role === "transporter" ? "transport" : role === "partner" ? "partner" : "dashboard";
     const acctLabel = role === "admin" ? "Admin dashboard" : role === "transporter" ? "Transport" : role === "partner" ? "Partner" : "My Rently";
-    const rightAction = !authReady ? null
+    const rightAction = !authReady ? h("div", { className: "rn-my-rently", style: { opacity: 0.35, pointerEvents: "none" }, "aria-hidden": "true" }, "      ")
       : session
         ? h(React.Fragment, null,
             h("button", { className: "rn-my-rently " + (view === acctView ? "active" : ""), onClick: () => goTo(acctView) }, acctLabel),
@@ -1468,19 +1468,22 @@ function App() {
         h("div", { className: "rn-dash-card" }, ItemIcon("calendar", 17), h("b", null, formatDate(semEnd)), h("span", null, "Return date")),
         h("div", { className: "rn-dash-card " + (myStorage.length === 0 ? "muted" : "") }, ItemIcon("archive", 17), h("b", null, myStorage.length === 0 ? "Not started" : (myStorage[0].bag_size === "small" ? "Small bag" : "Trunk")), h("span", null, "Storage ", myStorage.length > 0 ? "\u00b7 " + myStorage[0].status : ""))
       ),
-      myLatest && (myLatest.status === "Pending" || myLatest.status === "Confirmed") && PaymentInfo(myLatest.id, priceForItems(myLatest.items, myLatest.semester_start, myLatest.semester_end), myLatest.payment_status),
+      myBookings.filter(b => (b.status === "Pending" || b.status === "Confirmed") && b.payment_status !== "Paid").map(b =>
+        h(React.Fragment, { key: b.id }, PaymentInfo(b.id, priceForItems(b.items, b.semester_start, b.semester_end), b.payment_status))
+      ),
       myLatest && (myLatest.status === "Pending" || myLatest.status === "Confirmed") && PickupCode(myLatest),
       h("div", { className: "rn-admin-section" },
         h("h3", null, "Booking history"),
         myBookings.length === 0
           ? h("div", { className: "rn-empty" }, Icon("clipboard", 34), h("p", null, "Nothing booked yet."), h("button", { className: "rn-btn rn-btn-primary", onClick: () => goTo("build") }, "Build my room"))
           : h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
-              h("thead", null, h("tr", null, h("th", null, "Booking"), h("th", null, "Items"), h("th", null, "Semester"), h("th", null, "Status"))),
+              h("thead", null, h("tr", null, h("th", null, "Booking"), h("th", null, "Items"), h("th", null, "Semester"), h("th", null, "Status"), h("th", null, "Payment"))),
               h("tbody", null, myBookings.map(b => h("tr", { key: b.id },
                 h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, b.id)),
                 h("td", null, h("div", { className: "rn-item-tags" }, b.items.length === Object.keys(ITEM_DEFS).length ? h("span", { className: "rn-item-tag" }, "Full bundle") : b.items.map(iid => h("span", { key: iid, className: "rn-item-tag" }, ITEM_DEFS[iid] ? ITEM_DEFS[iid].name : iid)))),
                 h("td", null, formatDate(b.semester_start), " \u2013 ", formatDate(b.semester_end, true)),
-                h("td", null, StatusPill(b.status))
+                h("td", null, StatusPill(b.status)),
+                h("td", null, StatusPill(b.payment_status))
               )))
             ))
       )
@@ -1531,7 +1534,7 @@ function App() {
       h("span", { style: { fontSize: 12, color: "var(--ink-faint)", marginLeft: 6 } }, formatDate(comment.created_at.slice(0, 10))),
       h("p", { style: { margin: "2px 0 4px", fontSize: 13.5 } }, comment.body),
       canPostToCircles && h("button", { className: "rn-link-btn", style: { fontSize: 12.5 }, onClick: () => setReplyTarget(prev => ({ ...prev, [postId]: isReplying ? null : comment.id })) }, isReplying ? "Cancel" : "Reply"),
-      profile?.role === "admin" && h("button", { className: "rn-link-btn", style: { fontSize: 12.5, marginLeft: 10, color: "var(--magenta-dark)" }, onClick: () => deleteComment(postId, comment.id) }, "Delete"),
+      session && (session.user.id === comment.author_id || profile?.role === "admin") && h("button", { className: "rn-link-btn", style: { fontSize: 12.5, marginLeft: 10, color: "var(--magenta-dark)" }, onClick: () => { if (confirm("Delete this comment?")) deleteComment(postId, comment.id); } }, "Delete"),
       isReplying && h("form", { onSubmit: e => submitComment(postId, comment.id, draftKey, e), style: { display: "flex", gap: 8, marginTop: 6 } },
         h("input", { value: commentDraft[draftKey] || "", onChange: e => setCommentDraft(prev => ({ ...prev, [draftKey]: e.target.value })), placeholder: "Write a reply…", style: { flex: 1 } }),
         h("button", { className: "rn-btn rn-btn-ghost", type: "submit" }, "Reply")
@@ -1596,7 +1599,7 @@ function App() {
               open ? "Hide comments" : (comments.length ? comments.length + (comments.length === 1 ? " comment" : " comments") : "Comments")
             ),
             session && (session.user.id === p.author_id || profile?.role === "admin") && h("button", { className: "rn-link-btn", onClick: () => startEditPost(p) }, "Edit"),
-            profile?.role === "admin" && h("button", { className: "rn-link-btn", style: { color: "var(--magenta-dark)" }, onClick: () => deleteCirclePost(p.id) }, "Delete post")
+            session && (session.user.id === p.author_id || profile?.role === "admin") && h("button", { className: "rn-link-btn", style: { color: "var(--magenta-dark)" }, onClick: () => { if (confirm("Delete this post?")) deleteCirclePost(p.id); } }, "Delete post")
           ),
           open && h("div", { style: { marginTop: 8 } },
             tree.length === 0 && h("p", { style: { fontSize: 13, color: "var(--ink-faint)", margin: 0 } }, "No comments yet."),
@@ -1637,7 +1640,9 @@ function App() {
               storageMsg && h("p", { className: "rn-note" }, storageMsg)
             )
       ),
-      myStorage.length > 0 && myStorage[0].payment_status !== "Paid" && PaymentInfo(myStorage[0].id, myStorage[0].bag_size === "small" ? 500 : 800, myStorage[0].payment_status),
+      myStorage.filter(s => s.payment_status !== "Paid").map(s =>
+        h(React.Fragment, { key: s.id }, PaymentInfo(s.id, s.bag_size === "small" ? 500 : 800, s.payment_status))
+      ),
       myStorage.length > 0 && h("div", { className: "rn-admin-section", style: { marginTop: 30 } },
         h("h3", null, "Your storage requests"),
         h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
@@ -1682,7 +1687,9 @@ function App() {
               moveMsg && h("p", { className: "rn-note" }, moveMsg)
             )
       ),
-      myMoves.length > 0 && myMoves[0].payment_status !== "Paid" && PaymentInfo(myMoves[0].id, MOVE_PRICE, myMoves[0].payment_status),
+      myMoves.filter(m => m.payment_status !== "Paid").map(m =>
+        h(React.Fragment, { key: m.id }, PaymentInfo(m.id, MOVE_PRICE, m.payment_status))
+      ),
       myMoves.length > 0 && h("div", { className: "rn-admin-section", style: { marginTop: 30 } },
         h("h3", null, "Your move requests"),
         h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
