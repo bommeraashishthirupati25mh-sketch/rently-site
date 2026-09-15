@@ -729,7 +729,7 @@ function App() {
       setMoveBlock(profile.hostel_block || "");
       setMoveRoom(profile.room_info || "");
       setSemStart(profile.semester_start || addDaysISO(7));
-      setSemEnd(profile.semester_end || addDaysISO(145));
+      setSemEnd(profile.semester_end || addDaysISO(7 + SEMESTER_BASELINE_DAYS));
       if (profile.role === "admin") { refreshAllBookings(); refreshInventory(); refreshAllStorage(); refreshAllMoves(); refreshAllProfiles(); }
       else if (profile.role === "transporter") { refreshAllBookings(); refreshAllStorage(); refreshAllMoves(); }
       else if (profile.role === "partner") { refreshInventory(); refreshDemand(); refreshManifest(); }
@@ -1207,7 +1207,7 @@ function App() {
             h("span", { style: { fontSize: 12.5, color: "var(--ink-faint)" } }, "≈ ", durMonths, " mo · prices scale to this length"),
             h("button", { className: "rn-link-btn", onClick: saveSemester }, "Done")
           )
-        : h("button", { className: "rn-link-btn", onClick: () => setSemEditing(true) }, compact ? "Change dates" : "Not moving in July? Change dates")
+        : h("button", { className: "rn-link-btn", onClick: () => setSemEditing(true) }, compact ? "Change dates" : "Moving in on different dates? Change them here")
     );
   }
 
