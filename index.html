@@ -48,7 +48,9 @@
   .rn-header-right { display: flex; align-items: center; gap: 10px; }
   .rn-my-rently { background: var(--magenta); color: #fff; border: none; font-family: 'Inter'; font-weight: 700; font-size: 13.5px; padding: 9px 16px; border-radius: 999px; cursor: pointer; }
   .rn-my-rently:hover { background: var(--magenta-dark); }
+  .rn-my-rently.active { box-shadow: 0 0 0 2px var(--ink); }
   .rn-logout { background: none; border: none; color: var(--ink-soft); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .rn-logout.active { color: var(--magenta-dark); }
   .rn-main { max-width: 1160px; margin: 0 auto; padding: 0 24px 90px; }
   .rn-btn { font-family: 'Inter'; font-weight: 600; font-size: 15px; border-radius: 10px; border: none; padding: 13px 22px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
   .rn-btn-primary { background: var(--magenta); color: #fff; }
@@ -1159,8 +1161,8 @@ function App() {
     const rightAction = !authReady ? null
       : session
         ? h(React.Fragment, null,
-            h("button", { className: "rn-my-rently", onClick: () => goTo(acctView) }, acctLabel),
-            h("button", { className: "rn-logout", onClick: () => goTo("account") }, "Account"),
+            h("button", { className: "rn-my-rently " + (view === acctView ? "active" : ""), onClick: () => goTo(acctView) }, acctLabel),
+            h("button", { className: "rn-logout " + (view === "account" ? "active" : ""), onClick: () => goTo("account") }, "Account"),
             h("button", { className: "rn-logout", onClick: handleLogout }, "Log out")
           )
         : h("button", { className: "rn-my-rently", onClick: () => { setAuthMode("login"); goTo("auth"); } }, "Log in");
@@ -1859,14 +1861,14 @@ function App() {
       authMode === "login" && h("button", { className: "rn-link-btn", style: { marginTop: 10 }, type: "button", onClick: requestPasswordReset }, "Forgot password?"),
       h("div", { className: "rn-auth-toggle" },
         authMode === "signup" ? "Already have an account?" : "New to Rently?",
-        h("button", { className: "rn-link-btn", onClick: () => { setAuthMode(authMode === "signup" ? "login" : "signup"); setAuthMsg(""); } }, authMode === "signup" ? "Log in" : "Sign up")
+        h("button", { className: "rn-link-btn", onClick: () => { setAuthMode(authMode === "signup" ? "login" : "signup"); setAuthMsg(""); setAuthEmail(""); setAuthPassword(""); } }, authMode === "signup" ? "Log in" : "Sign up")
       )
     );
   }
 
   function LegalView(title, sections) {
     return h(React.Fragment, null,
-      h("div", { className: "rn-simple-hero" }, h("h1", { className: "rn-display" }, title), h("p", null, "Last updated " + LAST_UPDATED + ". This is a draft policy for the Rently pilot and hasn't been reviewed by a lawyer — treat it as a placeholder, not final legal advice.")),
+      h("div", { className: "rn-simple-hero" }, h("h1", { className: "rn-display" }, title), h("p", null, "Last updated " + LAST_UPDATED + ".")),
       h("div", { className: "rn-acct-card", style: { marginTop: 24, maxWidth: 680 } },
         sections.map(s => h("div", { key: s.h, style: { marginBottom: 18 } },
           h("h3", { style: { margin: "0 0 6px", fontSize: 16 } }, s.h),
