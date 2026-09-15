@@ -629,6 +629,7 @@ function App() {
   const [commentDraft, setCommentDraft] = useState({});
   const [replyTarget, setReplyTarget] = useState({});
   const [newPostOpen, setNewPostOpen] = useState(false);
+  const [editingPostId, setEditingPostId] = useState(null);
   const [newPostKind, setNewPostKind] = useState("Announcement");
   const [newPostTitle, setNewPostTitle] = useState("");
   const [newPostBody, setNewPostBody] = useState("");
@@ -798,7 +799,7 @@ function App() {
     setBusy(true);
     const { data, error } = await db.from("circle_comments").insert({
       post_id: postId, parent_comment_id: parentCommentId, author_id: session.user.id,
-      author_name: profile?.full_name || "Student", body,
+      author_name: displayName(), body,
     }).select().single();
     setBusy(false);
     if (!error && data) {
@@ -807,20 +808,31 @@ function App() {
       setReplyTarget(prev => ({ ...prev, [postId]: null }));
     }
   }
+  function startEditPost(p) {
+    setEditingPostId(p.id);
+    setNewPostKind(p.kind); setNewPostTitle(p.title); setNewPostBody(p.body || "");
+    setNewPostMeta(p.meta || ""); setNewPostEventDate(p.event_date || "");
+    setCircleMsg(""); setNewPostOpen(true);
+  }
+  function cancelPostForm() {
+    setNewPostOpen(false); setEditingPostId(null);
+    setNewPostTitle(""); setNewPostBody(""); setNewPostMeta(""); setNewPostEventDate(""); setCircleMsg("");
+  }
   async function submitNewPost(e) {
     e.preventDefault();
     if (!session || busy) return;
     if (!newPostTitle.trim()) { setCircleMsg("Add a title first."); return; }
     setBusy(true);
-    const id = "CIR-" + Math.floor(1000 + Math.random() * 9000);
-    const { error } = await db.from("circles_posts").insert({
-      id, author_id: session.user.id, author_name: profile?.full_name || "Student",
+    const fields = {
       kind: newPostKind, title: newPostTitle.trim(), body: newPostBody.trim(),
       meta: newPostMeta.trim(), event_date: newPostKind === "Event" && newPostEventDate ? newPostEventDate : null,
-    });
+    };
+    const { error } = editingPostId
+      ? await db.from("circles_posts").update(fields).eq("id", editingPostId)
+      : await db.from("circles_posts").insert({ id: "CIR-" + Math.floor(1000 + Math.random() * 9000), author_id: session.user.id, author_name: displayName(), ...fields });
     setBusy(false);
-    if (error) { setCircleMsg("Couldn't post: " + error.message); return; }
-    setNewPostTitle(""); setNewPostBody(""); setNewPostMeta(""); setNewPostEventDate(""); setNewPostOpen(false); setCircleMsg("");
+    if (error) { setCircleMsg("Couldn't " + (editingPostId ? "save" : "post") + ": " + error.message); return; }
+    setNewPostTitle(""); setNewPostBody(""); setNewPostMeta(""); setNewPostEventDate(""); setNewPostOpen(false); setEditingPostId(null); setCircleMsg("");
     refreshCirclePosts();
   }
   async function deleteCirclePost(id) {
@@ -998,6 +1010,11 @@ function App() {
     });
   }
   function openProductDetail(id) { setProductDetail(id); setProductImgIndex(0); }
+  function displayName() {
+    if (profile && profile.full_name && profile.full_name.trim()) return profile.full_name.trim();
+    if (session && session.user.email) return session.user.email.split("@")[0];
+    return "Student";
+  }
 
   async function handleAuth(e) {
     e.preventDefault();
@@ -1262,7 +1279,7 @@ function App() {
         h("div", { className: "rn-section-head" }, h("h2", { className: "rn-display" }, "The campus, in one feed.")),
         h("div", { className: "rn-teaser-row" },
           h("div", { className: "rn-teaser-card" }, Icon("users", 22), h("h3", null, "Circles keeps you in the loop between rentals."), h("p", null, "Batch group chats, a buy/sell board and event pages, all tied to your campus and hostel block."), Feed(CIRCLES_FEED), h("div", { style: { marginTop: 14 } }, h("button", { className: "rn-btn rn-btn-ghost", onClick: () => goTo("circles") }, "Open Circles", Icon("chevronRight", 15)))),
-          h("div", { className: "rn-teaser-card" }, Icon("mic", 22), h("h3", null, "Running a college event?"), h("p", null, "Rent speakers, projectors, decor and more for club events, without your club owning any of it."), h("div", { style: { marginTop: "auto" } }, h("button", { className: "rn-btn rn-btn-ghost", onClick: () => goTo("circles") }, "Explore event rentals", Icon("chevronRight", 15))))
+          h("div", { className: "rn-teaser-card" }, Icon("mic", 22), h("h3", null, "Running a college event?"), h("p", null, "Rently Events isn't a full catalog yet — post what your club needs (speakers, projectors, decor) in Circles and our team coordinates it manually."), h("div", { style: { marginTop: "auto" } }, h("button", { className: "rn-btn rn-btn-ghost", onClick: () => { setNewPostKind("Marketplace"); setNewPostOpen(true); goTo("circles"); } }, "Request event equipment", Icon("chevronRight", 15))))
         )
       ),
       h("section", { className: "rn-section", style: { borderTop: "none", paddingTop: 0 } },
@@ -1516,10 +1533,11 @@ function App() {
       ),
       h("div", { className: "rn-section-head" },
         h("h2", { className: "rn-display", style: { fontSize: 26 } }, "Trending on campus"),
-        session && h("button", { className: "rn-btn rn-btn-primary", onClick: () => setNewPostOpen(v => !v) }, Icon("plus", 16), newPostOpen ? "Cancel" : "New post")
+        session && h("button", { className: "rn-btn rn-btn-primary", onClick: () => newPostOpen ? cancelPostForm() : setNewPostOpen(true) }, Icon("plus", 16), newPostOpen ? "Cancel" : "New post")
       ),
       !session && h("p", { className: "rn-note" }, "Log in to see and post in Circles."),
       session && newPostOpen && h("div", { className: "rn-acct-card", style: { marginBottom: 24 } },
+        h("h4", { style: { margin: "0 0 12px" } }, editingPostId ? "Edit post" : "New post"),
         h("form", { onSubmit: submitNewPost },
           h("div", { className: "rn-field" }, h("label", null, "Type"),
             h("div", { className: "rn-cat-items" }, ["Announcement", "Event", "Marketplace"].map(k =>
@@ -1532,7 +1550,7 @@ function App() {
           newPostKind === "Marketplace" && h("div", { className: "rn-field" }, h("label", null, "Price"), h("input", { value: newPostMeta, onChange: e => setNewPostMeta(e.target.value), placeholder: "e.g. ₹100/week" })),
           newPostKind === "Event" && h("div", { className: "rn-field" }, h("label", null, "Event date"), h("input", { type: "date", value: newPostEventDate, min: todayISO(), onChange: e => setNewPostEventDate(e.target.value) })),
           newPostKind === "Event" && h("div", { className: "rn-field" }, h("label", null, "Time (optional)"), h("input", { value: newPostMeta, onChange: e => setNewPostMeta(e.target.value), placeholder: "e.g. 6 PM" })),
-          h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: busy }, busy ? "Posting…" : "Post"),
+          h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: busy }, busy ? "Saving…" : (editingPostId ? "Save changes" : "Post")),
           circleMsg && h("p", { className: "rn-note" }, circleMsg)
         )
       ),
@@ -1557,6 +1575,7 @@ function App() {
             h("button", { className: "rn-link-btn", onClick: () => toggleThread(p.id) },
               open ? "Hide comments" : (comments.length ? comments.length + (comments.length === 1 ? " comment" : " comments") : "Comments")
             ),
+            session && (session.user.id === p.author_id || profile?.role === "admin") && h("button", { className: "rn-link-btn", onClick: () => startEditPost(p) }, "Edit"),
             profile?.role === "admin" && h("button", { className: "rn-link-btn", style: { color: "var(--magenta-dark)" }, onClick: () => deleteCirclePost(p.id) }, "Delete post")
           ),
           open && h("div", { style: { marginTop: 8 } },
