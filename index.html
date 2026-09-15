@@ -495,6 +495,29 @@ function relativeDayLabel(iso) {
   if (iso === addDaysISO(1)) return "Tomorrow";
   return formatDate(iso, true);
 }
+// Greedy same-window clustering: groups delivery dates that are within
+// `toleranceDays` of a growing cluster's running center, so scattered
+// individual semester-start dates collapse into a small number of
+// recommended shared delivery batches instead of one trip per student.
+function clusterDeliveryDates(dates, toleranceDays) {
+  toleranceDays = toleranceDays || 3;
+  const toDay = iso => Math.round(new Date(iso + "T00:00:00").getTime() / 86400000);
+  const sorted = [...dates].filter(Boolean).sort();
+  const clusters = [];
+  for (const d of sorted) {
+    const dayNum = toDay(d);
+    const last = clusters[clusters.length - 1];
+    if (last && dayNum - last.centerDay <= toleranceDays) {
+      last.dates.push(d);
+      last.centerDay = last.dates.reduce((s, x) => s + toDay(x), 0) / last.dates.length;
+    } else {
+      clusters.push({ dates: [d], centerDay: dayNum });
+    }
+  }
+  return clusters
+    .map(c => ({ count: c.dates.length, recommendedDate: c.dates[Math.floor(c.dates.length / 2)], spanStart: c.dates[0], spanEnd: c.dates[c.dates.length - 1] }))
+    .sort((a, b) => b.count - a.count);
+}
 function buildCommentTree(comments) {
   const byId = {};
   comments.forEach(c => { byId[c.id] = { ...c, replies: [] }; });
@@ -1137,6 +1160,8 @@ function App() {
   const totalBookings = bookings.length;
   const activeRentals = bookings.filter(b => b.status === "Confirmed" || b.status === "Delivered").length;
   const lowStockItems = inventory.filter(i => i.stock < LOW_STOCK);
+  const activeBookings = bookings.filter(b => b.status === "Pending" || b.status === "Confirmed");
+  const deliveryBatches = clusterDeliveryDates(activeBookings.map(b => b.semester_start), 3);
 
   const mainNav = [
     { id: "home", label: "Home" }, { id: "build", label: "Rent" },
@@ -1648,6 +1673,25 @@ function App() {
         h("div", { className: "rn-stat-card" }, ItemIcon("users", 18, "ink"), h("b", null, totalBookings), h("span", null, "Total bookings")),
         h("div", { className: "rn-stat-card" }, ItemIcon("repeat", 18, "ink"), h("b", null, activeRentals), h("span", null, "Active rentals (confirmed + delivered)")),
         h("div", { className: "rn-stat-card " + (lowStockItems.length > 0 ? "warn" : "") }, ItemIcon("boxes", 18, "ink"), h("b", null, lowStockItems.length), h("span", null, "Items running low on stock"))
+      ),
+      h("div", { className: "rn-admin-section" },
+        h("h3", null, "Smart delivery batching"),
+        h("p", { style: { fontSize: 13, color: "var(--ink-soft)", margin: "-4px 0 14px", maxWidth: 520 } }, "Groups active bookings by semester start date (within a 3-day window) and recommends a shared delivery date per cluster — instead of one trip per student's own date."),
+        activeBookings.length === 0
+          ? h("p", { className: "rn-note" }, "No active bookings yet — recommendations will appear once students start booking.")
+          : h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, deliveryBatches.map((batch, i) => {
+              const pct = Math.round((batch.count / activeBookings.length) * 100);
+              return h("div", { key: batch.recommendedDate, className: "rn-acct-card", style: { padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, borderColor: i === 0 ? "var(--magenta)" : undefined } },
+                h("div", null,
+                  h("div", { style: { fontWeight: 700, fontSize: 15 } }, i === 0 ? "Recommended batch" : "Alternate batch", " · ", formatDate(batch.recommendedDate, true)),
+                  batch.spanStart !== batch.spanEnd && h("div", { style: { fontSize: 12.5, color: "var(--ink-faint)" } }, "Covers bookings from ", formatDate(batch.spanStart), " to ", formatDate(batch.spanEnd, true))
+                ),
+                h("div", { style: { textAlign: "right" } },
+                  h("div", { style: { fontFamily: "'Big Shoulders Display'", fontWeight: 800, fontSize: 22, color: "var(--magenta-dark)" } }, batch.count),
+                  h("div", { style: { fontSize: 11.5, color: "var(--ink-faint)" } }, "bookings · ", pct, "%")
+                )
+              );
+            }))
       ),
       h("div", { className: "rn-admin-section" }, h("h3", null, "Bookings"),
         h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
