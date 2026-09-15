@@ -52,6 +52,9 @@
   .rn-logout { background: none; border: none; color: var(--ink-soft); font-size: 12.5px; font-weight: 600; cursor: pointer; }
   .rn-logout.active { color: var(--magenta-dark); }
   .rn-main { max-width: 1160px; margin: 0 auto; padding: 0 24px 90px; }
+  .rn-page-enter { animation: rn-page-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  @keyframes rn-page-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @media (prefers-reduced-motion: reduce) { .rn-page-enter { animation: none; } }
   .rn-btn { font-family: 'Inter'; font-weight: 600; font-size: 15px; border-radius: 10px; border: none; padding: 13px 22px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
   .rn-btn-primary { background: var(--magenta); color: #fff; }
   .rn-btn-primary:hover { background: var(--magenta-dark); }
@@ -1911,7 +1914,7 @@ function App() {
 
   return h("div", null,
     Header(),
-    h("main", { className: "rn-main" }, body),
+    h("main", { className: "rn-main" }, h("div", { key: view, className: "rn-page-enter" }, body)),
     h("footer", { className: "rn-footer" },
       Logo(26),
       h("span", null, "Live pilot build \u00b7 backed by a real database \u00b7 built for the Rently pilot"),
