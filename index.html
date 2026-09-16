@@ -759,6 +759,7 @@ function App() {
   const [acctSaving, setAcctSaving] = useState(false);
   const [acctBlock, setAcctBlock] = useState("");
   const [acctBatch, setAcctBatch] = useState("");
+  const [acctPhone, setAcctPhone] = useState("");
   const [bookBlock, setBookBlock] = useState("");
   const [deliverySlot, setDeliverySlot] = useState(DELIVERY_SLOTS[0]);
   const [storageBlock, setStorageBlock] = useState("");
@@ -812,6 +813,7 @@ function App() {
       setAcctRoom(profile.room_info || "");
       setAcctBlock(profile.hostel_block || "");
       setAcctBatch(profile.batch || "");
+      setAcctPhone(profile.phone || "");
       setStorageBlock(profile.hostel_block || "");
       setStorageRoom(profile.room_info || "");
       setMoveBlock(profile.hostel_block || "");
@@ -984,6 +986,7 @@ function App() {
     setBusy(false);
     if (error) { setStorageMsg("Couldn't submit: " + error.message); return; }
     setStorageMsg("Storage request submitted.");
+    notifyWhatsApp("storage", id);
     refreshMyStorage();
   }
   async function submitMoveBooking(e) {
@@ -1002,6 +1005,7 @@ function App() {
     if (error) { setMoveMsg("Couldn't submit: " + error.message); return; }
     setMoveMsg("Move request submitted.");
     setMoveNotes("");
+    notifyWhatsApp("move", id);
     refreshMyMoves();
   }
   async function updateStorageStatus(id, status) {
@@ -1142,6 +1146,16 @@ function App() {
     if (!res.ok) throw new Error(data.error || "AI request failed.");
     return data;
   }
+  // Fire-and-forget: WhatsApp confirmation is a bonus notification channel, never blocks
+  // the booking/storage/move flow itself (that already works via the in-app OTP/summary).
+  function notifyWhatsApp(kind, id) {
+    if (!session) return;
+    fetch(SUPABASE_URL + "/functions/v1/whatsapp-notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token, apikey: SUPABASE_KEY },
+      body: JSON.stringify({ kind, id }),
+    }).catch(err => console.error("WhatsApp notify failed:", err.message));
+  }
   async function sendChatText(text) {
     text = text.trim();
     if (!text || chatBusy) return;
@@ -1222,10 +1236,12 @@ function App() {
   async function saveAccountProfile(e) {
     e.preventDefault();
     setAcctSaving(true); setAcctMsg("");
-    const { error } = await db.from("profiles").update({ full_name: acctName.trim(), room_info: acctRoom.trim(), hostel_block: acctBlock, batch: acctBatch }).eq("id", session.user.id);
+    const phone = acctPhone.trim();
+    if (phone && !/^\+?[0-9]{10,15}$/.test(phone)) { setAcctSaving(false); setAcctMsg("WhatsApp number should be digits only (with optional country code), 10-15 digits."); return; }
+    const { error } = await db.from("profiles").update({ full_name: acctName.trim(), room_info: acctRoom.trim(), hostel_block: acctBlock, batch: acctBatch, phone }).eq("id", session.user.id);
     setAcctSaving(false);
     if (error) { setAcctMsg("Couldn't save: " + error.message); return; }
-    setProfile(p => ({ ...p, full_name: acctName.trim(), room_info: acctRoom.trim(), hostel_block: acctBlock, batch: acctBatch }));
+    setProfile(p => ({ ...p, full_name: acctName.trim(), room_info: acctRoom.trim(), hostel_block: acctBlock, batch: acctBatch, phone }));
     setAcctMsg("Saved.");
   }
   async function changeAccountPassword(e) {
@@ -1278,6 +1294,7 @@ function App() {
     }
     await refreshInventory();
     await refreshMyBookings();
+    notifyWhatsApp("booking", id);
     setLastBookingId(id);
     setCartIds([]);
     setFormError("");
@@ -1686,6 +1703,7 @@ function App() {
             h("div", { className: "rn-field" }, h("label", null, "Full name"), h("input", { value: acctName, onChange: e => setAcctName(e.target.value.replace(/[^A-Za-z\s]/g, "")), pattern: "[A-Za-z\\s]+", title: "Letters only" })),
             !isStaff && h("div", { className: "rn-field" }, h("label", null, "Batch"), h("input", { value: acctBatch, onChange: e => setAcctBatch(e.target.value), placeholder: "e.g. 2026" })),
             !isStaff && HostelField(acctBlock, acctRoom, setAcctBlock, setAcctRoom),
+            h("div", { className: "rn-field" }, h("label", null, "WhatsApp number"), h("input", { value: acctPhone, onChange: e => setAcctPhone(e.target.value.replace(/[^0-9+]/g, "")), placeholder: "+91XXXXXXXXXX" }), h("p", { className: "rn-note", style: { marginTop: 4 } }, "Get booking confirmations, pickup codes and payment reminders on WhatsApp. Optional.")),
             h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: acctSaving }, acctSaving ? "Saving\u2026" : "Save changes")
           )
         ),
