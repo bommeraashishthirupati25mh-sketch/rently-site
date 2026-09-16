@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const GEMINI_MODEL = "gemini-3.6-flash";
+const GEMINI_MODEL = "gemini-3.5-flash-lite";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const CORS_HEADERS = {
@@ -56,9 +57,8 @@ own student bookings - that flow is blocked for staff accounts. Answer from the 
 their dashboard, not how a student books.`,
 };
 
-function buildChatPrompt(context: Record<string, unknown>) {
-  const role = typeof context.role === "string" ? context.role : "student";
-  const roleGuidance = ROLE_GUIDANCE[role] || "";
+function buildChatPrompt(context: Record<string, unknown>, verifiedRole: string) {
+  const roleGuidance = ROLE_GUIDANCE[verifiedRole] || "";
   const catalog = Array.isArray(context.catalog) ? context.catalog : [];
   const catalogLines = catalog
     .map((it: any) => `- ${it.name} (id: ${it.id}): Rs ${it.price} for the ${context.semesterBaselineDays ?? 90}-day baseline, scales with chosen dates`)
@@ -69,7 +69,7 @@ function buildChatPrompt(context: Record<string, unknown>) {
     : "";
   const moveLine = context.movePrice != null ? `Move-in or move-out transport (flat, per trip): Rs ${context.movePrice}.` : "";
   const semLine = context.semesterLabel ? `Current chosen semester window: ${context.semesterLabel}.` : "";
-  const roleLine = `This user's account role: ${role}.`;
+  const roleLine = `This user's account role: ${verifiedRole}.`;
   const myBookings = Array.isArray(context.myBookingsSummary) && context.myBookingsSummary.length
     ? `This user's own bookings right now: ${JSON.stringify(context.myBookingsSummary)}`
     : "This user has no bookings of their own.";
@@ -110,11 +110,13 @@ ${catalogLines}
 ${context.bundlePrice != null ? `Full bundle price at baseline: Rs ${context.bundlePrice}.` : ""}`;
 }
 
+class GeminiRateLimitError extends Error {}
+
 async function callGemini(apiKey: string, systemInstruction: string, contents: { role: string; parts: { text: string }[] }[], responseSchema?: object) {
   const body: Record<string, unknown> = {
     systemInstruction: { parts: [{ text: systemInstruction }] },
     contents,
-    generationConfig: { temperature: 0.4, maxOutputTokens: 1024, thinkingConfig: { thinkingBudget: 0 } },
+    generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
   };
   if (responseSchema) {
     (body.generationConfig as Record<string, unknown>).responseMimeType = "application/json";
@@ -127,6 +129,7 @@ async function callGemini(apiKey: string, systemInstruction: string, contents: {
   });
   if (!res.ok) {
     const errText = await res.text();
+    if (res.status === 429) throw new GeminiRateLimitError(errText.slice(0, 300));
     throw new Error(`Gemini API error ${res.status}: ${errText.slice(0, 300)}`);
   }
   const data = await res.json();
@@ -155,6 +158,26 @@ Deno.serve(async (req: Request) => {
 
   if (!message.trim()) return json({ error: "Message is required." }, 400);
 
+  // Don't trust the client-supplied role for prompt framing - look up the caller's real role.
+  // The caller's own JWT (already verified by the platform via verify_jwt) lets them read their
+  // own profiles row under RLS, so this needs no service-role key.
+  let verifiedRole = "student";
+  const authHeader = req.headers.get("Authorization");
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (authHeader && supabaseUrl && supabaseAnonKey) {
+    try {
+      const supabase = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: authHeader } } });
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData?.user?.id) {
+        const { data: profileData } = await supabase.from("profiles").select("role").eq("id", userData.user.id).single();
+        if (profileData?.role) verifiedRole = profileData.role;
+      }
+    } catch (e) {
+      console.error("role lookup failed:", e instanceof Error ? e.message : e);
+    }
+  }
+
   try {
     if (mode === "chat") {
       const contents = [
@@ -163,7 +186,7 @@ Deno.serve(async (req: Request) => {
           .map((h: any) => ({ role: h.role, parts: [{ text: String(h.text).slice(0, 1000) }] })),
         { role: "user", parts: [{ text: message }] },
       ];
-      const reply = await callGemini(apiKey, buildChatPrompt(context), contents);
+      const reply = await callGemini(apiKey, buildChatPrompt(context, verifiedRole), contents);
       return json({ reply: reply.trim() || "Sorry, I couldn't come up with an answer for that. Try rephrasing?" });
     }
 
@@ -195,6 +218,10 @@ Deno.serve(async (req: Request) => {
 
     return json({ error: "Unknown mode." }, 400);
   } catch (e) {
+    if (e instanceof GeminiRateLimitError) {
+      console.error("ai-assistant rate limited:", e.message);
+      return json({ error: "The AI assistant has hit its usage limit for now. Please try again in a little while." }, 429);
+    }
     console.error("ai-assistant error:", e instanceof Error ? e.message : e);
     return json({ error: "AI request failed. Please try again in a moment." }, 502);
   }

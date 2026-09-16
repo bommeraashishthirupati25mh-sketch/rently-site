@@ -170,7 +170,7 @@
   .rn-chat-faq { text-align: left; font: inherit; font-size: 12.5px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
   .rn-chat-faq:hover:not(:disabled) { border-color: var(--magenta); color: var(--magenta-dark); }
   .rn-chat-faq:disabled { opacity: 0.5; cursor: default; }
-  .rn-chat-msg { font-size: 13.5px; padding: 8px 12px; border-radius: 12px; max-width: 88%; line-height: 1.4; }
+  .rn-chat-msg { font-size: 13.5px; padding: 8px 12px; border-radius: 12px; max-width: 88%; line-height: 1.4; overflow-wrap: anywhere; }
   .rn-chat-msg-user { align-self: flex-end; background: var(--magenta); color: #fff; }
   .rn-chat-msg-ai { align-self: flex-start; background: #fff; border: 1px solid var(--line); color: var(--ink); }
   .rn-chat-typing { opacity: 0.6; }
@@ -348,7 +348,7 @@ const SUPABASE_URL = "https://vbkmzsneryyjtjmjeynj.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZia216c25lcnl5anRqbWpleW5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMzM4MDcsImV4cCI6MjEwNDYwOTgwN30.P6QJkXdaeRCrdBvwqdhincaUmWadxusDCVEqQ-GT2Jw";
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 const h = React.createElement;
 
 const ITEM_DEFS = {
@@ -687,6 +687,10 @@ function App() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
+  const chatBodyRef = useRef(null);
+  useEffect(() => {
+    if (chatBodyRef.current) chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+  }, [chatMessages, chatBusy, chatOpen]);
   const [advisorOpen, setAdvisorOpen] = useState(false);
   const [advisorInput, setAdvisorInput] = useState("");
   const [advisorBusy, setAdvisorBusy] = useState(false);
@@ -786,6 +790,12 @@ function App() {
       setCirclePosts([]);
       setCircleComments({});
       setOpenThreads({});
+      setChatMessages([]);
+      setChatOpen(false);
+      setChatInput("");
+      setAdvisorResult(null);
+      setAdvisorInput("");
+      setAdvisorOpen(false);
     }
   }, [session]);
 
@@ -813,7 +823,12 @@ function App() {
 
   async function loadProfile() {
     const uid = session.user.id;
-    let { data } = await db.from("profiles").select("*").eq("id", uid).single();
+    let { data, error } = await db.from("profiles").select("*").eq("id", uid).single();
+    if (error) {
+      console.error("loadProfile failed, retrying once:", error.message);
+      ({ data, error } = await db.from("profiles").select("*").eq("id", uid).single());
+      if (error) console.error("loadProfile retry also failed:", error.message);
+    }
     setProfile(data);
   }
   async function refreshInventory() {
@@ -958,7 +973,7 @@ function App() {
     setBusy(true);
     const id = "STG-" + Math.floor(1000 + Math.random() * 9000);
     const { error } = await db.from("storage_bookings").insert({
-      id, student_id: session.user.id, student_name: acctName || profile.full_name || "",
+      id, student_id: session.user.id, student_name: acctName || profile?.full_name || "",
       hostel_block: storageBlock, room_info: storageRoom.trim(),
       bag_size: bagSize, drop_off_date: dropOffDate, pickup_date: pickupDate, status: "Requested",
     });
@@ -975,7 +990,7 @@ function App() {
     setBusy(true);
     const id = "MOV-" + Math.floor(1000 + Math.random() * 9000);
     const { error } = await db.from("move_bookings").insert({
-      id, student_id: session.user.id, student_name: acctName || profile.full_name || "",
+      id, student_id: session.user.id, student_name: acctName || profile?.full_name || "",
       hostel_block: moveBlock, room_info: moveRoom.trim(),
       move_type: moveType, move_date: moveDate, notes: moveNotes.trim(), status: "Requested",
     });
@@ -1122,7 +1137,7 @@ function App() {
     text = text.trim();
     if (!text || chatBusy) return;
     if (!session) { setChatMessages(prev => [...prev, { role: "user", text }, { role: "model", text: "Log in first and I can help with questions about your bookings and Rently." }]); setChatInput(""); return; }
-    const history = chatMessages.map(m => ({ role: m.role === "user" ? "user" : "model", text: m.text }));
+    const history = chatMessages.slice(-10).map(m => ({ role: m.role === "user" ? "user" : "model", text: m.text }));
     setChatMessages(prev => [...prev, { role: "user", text }]);
     setChatInput("");
     setChatBusy(true);
@@ -1249,8 +1264,7 @@ function App() {
     const { error: profileErr } = await db.from("profiles").update({ full_name: bookName.trim(), room_info: bookRoom.trim(), hostel_block: bookBlock }).eq("id", session.user.id);
     if (profileErr) console.error("Profile update failed:", profileErr.message);
     for (const cid of cartIds) {
-      const cur = stockOf(cid);
-      const { error: stockErr } = await db.from("inventory").update({ stock: Math.max(0, cur - 1) }).eq("item_id", cid);
+      const { error: stockErr } = await db.rpc("decrement_item_stock", { p_item_id: cid });
       if (stockErr) console.error("Stock update failed for", cid, stockErr.message);
     }
     await refreshInventory();
@@ -2145,7 +2159,7 @@ function App() {
           h("b", null, "Ask Rently"),
           h("button", { className: "rn-chat-close", onClick: () => setChatOpen(false), "aria-label": "Close chat" }, Icon("x", 16))
         ),
-        h("div", { className: "rn-chat-body" },
+        h("div", { className: "rn-chat-body", ref: chatBodyRef },
           chatMessages.length === 0 && h(React.Fragment, null,
             h("p", { className: "rn-chat-hint" }, chatHintForRole(profile && profile.role)),
             h("div", { className: "rn-chat-faqs" }, chatFaqsForRole(profile && profile.role).map(q => h("button", { key: q, className: "rn-chat-faq", onClick: () => sendChatText(q), disabled: chatBusy }, q)))
