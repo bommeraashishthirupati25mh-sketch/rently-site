@@ -42,7 +42,7 @@
   .rn-header { position: sticky; top: 0; z-index: 40; background: rgba(245,241,231,0.94); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
   .rn-header-inner { max-width: 1160px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
   .rn-nav { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
-  .rn-nav-btn { background: transparent; border: none; font-family: 'Inter'; font-weight: 600; font-size: 14.5px; color: var(--ink-soft); padding: 9px 13px; border-radius: 999px; cursor: pointer; }
+  .rn-nav-btn { background: transparent; border: none; font-family: 'Inter'; font-weight: 600; font-size: 14.5px; color: var(--ink-soft); padding: 9px 13px; border-radius: 999px; cursor: pointer; text-decoration: none; display: inline-block; }
   .rn-nav-btn:hover { background: var(--cream-card); color: var(--ink); }
   .rn-nav-btn.active { background: var(--ink); color: var(--cream); }
   .rn-header-right { display: flex; align-items: center; gap: 10px; }
@@ -1370,7 +1370,10 @@ function App() {
     return h("header", { className: "rn-header" },
       h("div", { className: "rn-header-inner" },
         h("button", { className: "rn-logo-btn", type: "button", "aria-label": "Rently home", onClick: () => goTo("home") }, Logo()),
-        h("nav", { className: "rn-nav " + (navOpen ? "open" : "") }, mainNav.map(n => h("button", { key: n.id, className: "rn-nav-btn " + (view === n.id ? "active" : ""), onClick: () => goTo(n.id) }, n.label))),
+        h("nav", { className: "rn-nav " + (navOpen ? "open" : "") },
+          mainNav.map(n => h("button", { key: n.id, className: "rn-nav-btn " + (view === n.id ? "active" : ""), onClick: () => goTo(n.id) }, n.label)),
+          h("a", { className: "rn-nav-btn", href: "/blog/index.html" }, "Blog")
+        ),
         h("div", { className: "rn-header-right" }, rightAction),
         h("button", { className: "rn-burger", onClick: () => setNavOpen(v => !v), "aria-label": "Menu" }, Icon(navOpen ? "x" : "menu", 22))
       )
@@ -2204,7 +2207,7 @@ function App() {
       Logo(26),
       h("span", null, "Live pilot build \u00b7 backed by a real database \u00b7 built for the Rently pilot"),
       h("div", { style: { display: "flex", gap: 16 } },
-        h("a", { href: "/blog/" }, "Blog"),
+        h("a", { href: "/blog/index.html" }, "Blog"),
         h("a", { href: "/privacy", onClick: e => { e.preventDefault(); goTo("privacy"); } }, "Privacy"),
         h("a", { href: "/terms", onClick: e => { e.preventDefault(); goTo("terms"); } }, "Terms")
       )
