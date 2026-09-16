@@ -45,6 +45,8 @@
   .rn-nav-btn { background: transparent; border: none; font-family: 'Inter'; font-weight: 600; font-size: 14.5px; color: var(--ink-soft); padding: 9px 13px; border-radius: 999px; cursor: pointer; text-decoration: none; display: inline-block; }
   .rn-nav-btn:hover { background: var(--cream-card); color: var(--ink); }
   .rn-nav-btn.active { background: var(--ink); color: var(--cream); }
+  .rn-nav-blog { margin-left: 10px; padding-left: 17px; border-left: 1.5px solid var(--line); color: var(--magenta-dark); }
+  .rn-nav-blog:hover { background: var(--magenta-tint); color: var(--magenta-dark); }
   .rn-header-right { display: flex; align-items: center; gap: 10px; }
   .rn-my-rently { background: var(--magenta); color: #fff; border: none; font-family: 'Inter'; font-weight: 700; font-size: 13.5px; padding: 9px 16px; border-radius: 999px; cursor: pointer; }
   .rn-my-rently:hover { background: var(--magenta-dark); }
@@ -291,6 +293,7 @@
     }
     .rn-nav.open { display: flex; }
     .rn-nav-btn { text-align: left; padding: 12px 10px; font-size: 15.5px; }
+    .rn-nav-blog { margin-left: 0; padding-left: 10px; margin-top: 6px; padding-top: 14px; border-left: none; border-top: 1.5px solid var(--line); }
     .rn-my-rently { font-size: 12.5px; padding: 8px 12px; }
     .rn-logout { font-size: 11.5px; }
   }
@@ -489,6 +492,8 @@ const ADVISOR_EXAMPLES = [
   "Just here for a short exchange semester, keep it minimal",
 ];
 const DELIVERY_STEPS = ["Students book", "Rently aggregates demand", "Partner prepares inventory", "One campus delivery", "Hostel blocks receive orders"];
+const VIEW_PATHS = { home: "/", build: "/build", circles: "/circles", storage: "/storage", moves: "/moves", privacy: "/privacy", terms: "/terms" };
+const PATH_VIEWS = Object.fromEntries(Object.entries(VIEW_PATHS).filter(([v]) => v !== "home").map(([v, p]) => [p, v]));
 const CIRCLES_FEED = [
   { id: "wifi-maintenance", icon: "clipboard", kind: "Announcement", title: "Hostel Wi-Fi maintenance window", meta: "Today \u00b7 9\u201311 PM" },
   { id: "cycle-rental", icon: "bike", kind: "Renting", title: "Cycle", meta: "\u20b9100/week" },
@@ -676,10 +681,8 @@ function App() {
   const [profile, setProfile] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [view, setView] = useState(() => {
-    const p = window.location.pathname.replace(/\/+$/, "");
-    if (p === "/privacy") return "privacy";
-    if (p === "/terms") return "terms";
-    return "home";
+    const p = window.location.pathname.replace(/\/+$/, "") || "/";
+    return PATH_VIEWS[p] || "home";
   });
   const [navOpen, setNavOpen] = useState(false);
   const [cartIds, setCartIds] = useState([]);
@@ -1094,7 +1097,7 @@ function App() {
   function goTo(v) {
     setView(v);
     setNavOpen(false);
-    const path = v === "privacy" ? "/privacy" : v === "terms" ? "/terms" : "/";
+    const path = VIEW_PATHS[v] || "/";
     if (window.history && window.location.pathname !== path) window.history.pushState({}, "", path);
     window.scrollTo && window.scrollTo({ top: 0, behavior: "instant" });
   }
@@ -1372,7 +1375,7 @@ function App() {
         h("button", { className: "rn-logo-btn", type: "button", "aria-label": "Rently home", onClick: () => goTo("home") }, Logo()),
         h("nav", { className: "rn-nav " + (navOpen ? "open" : "") },
           mainNav.map(n => h("button", { key: n.id, className: "rn-nav-btn " + (view === n.id ? "active" : ""), onClick: () => goTo(n.id) }, n.label)),
-          h("a", { className: "rn-nav-btn", href: "/blog/index.html" }, "Blog")
+          h("a", { className: "rn-nav-btn rn-nav-blog", href: "/blog/index.html" }, "Blog")
         ),
         h("div", { className: "rn-header-right" }, rightAction),
         h("button", { className: "rn-burger", onClick: () => setNavOpen(v => !v), "aria-label": "Menu" }, Icon(navOpen ? "x" : "menu", 22))
