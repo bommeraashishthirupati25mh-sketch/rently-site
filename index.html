@@ -1326,8 +1326,7 @@ function App() {
           h("h1", { className: "rn-display" }, "Set up your room", h("br"), "without owning any of it."),
           h("p", { className: "lead" }, "Rently delivers a brand-insured room-setup bundle on move-in day and collects it on move-out day, so you stop buying things you'll throw out in four months."),
           h("div", { className: "rn-hero-actions" },
-            h("button", { className: "rn-btn rn-btn-primary", onClick: () => goTo("build") }, "Build my room", Icon("arrowRight", 16)),
-            h("button", { className: "rn-btn rn-btn-ghost", onClick: () => goTo("build") }, "Explore rentals")
+            h("button", { className: "rn-btn rn-btn-primary", onClick: () => goTo("build") }, "Build my room", Icon("arrowRight", 16))
           ),
           h("div", { className: "rn-stat-row" },
             h("div", { className: "rn-stat" }, h("b", null, money(scaledBundlePrice)), h("span", null, "per semester, full bundle")),
