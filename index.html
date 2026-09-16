@@ -166,6 +166,10 @@
   .rn-chat-close { background: none; border: none; color: #fff; cursor: pointer; display: flex; }
   .rn-chat-body { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
   .rn-chat-hint { font-size: 12.5px; color: var(--ink-faint); margin: 0; }
+  .rn-chat-faqs { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .rn-chat-faq { text-align: left; font: inherit; font-size: 12.5px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
+  .rn-chat-faq:hover:not(:disabled) { border-color: var(--magenta); color: var(--magenta-dark); }
+  .rn-chat-faq:disabled { opacity: 0.5; cursor: default; }
   .rn-chat-msg { font-size: 13.5px; padding: 8px 12px; border-radius: 12px; max-width: 88%; line-height: 1.4; }
   .rn-chat-msg-user { align-self: flex-end; background: var(--magenta); color: #fff; }
   .rn-chat-msg-ai { align-self: flex-start; background: #fff; border: 1px solid var(--line); color: var(--ink); }
@@ -444,6 +448,17 @@ const TRUST_POINTS = [
   { icon: "fileCheck", title: "Damage protection", desc: "Fixed policies on normal wear and damage, shown before you book, not negotiated after." },
   { icon: "truck", title: "Campus delivery", desc: "Delivered and collected in a coordinated campus window, not a random courier at a random time." },
   { icon: "userCheck", title: "Verified students", desc: "Every booking is tied to a verified campus account, so deliveries go to the right room, every time." },
+];
+const CHAT_FAQS = [
+  "What's in the full room bundle and how much is it?",
+  "How does semester storage work?",
+  "How do I pay, and is it safe?",
+  "What happens if I damage something?",
+];
+const ADVISOR_EXAMPLES = [
+  "Tight budget, I already have a mattress and chair",
+  "I need everything, room is pretty bare right now",
+  "Just here for a short exchange semester, keep it minimal",
 ];
 const DELIVERY_STEPS = ["Students book", "Rently aggregates demand", "Partner prepares inventory", "One campus delivery", "Hostel blocks receive orders"];
 const CIRCLES_FEED = [
@@ -1075,9 +1090,8 @@ function App() {
     if (!res.ok) throw new Error(data.error || "AI request failed.");
     return data;
   }
-  async function sendChatMessage(e) {
-    e.preventDefault();
-    const text = chatInput.trim();
+  async function sendChatText(text) {
+    text = text.trim();
     if (!text || chatBusy) return;
     if (!session) { setChatMessages(prev => [...prev, { role: "user", text }, { role: "model", text: "Log in first and I can help with questions about your bookings and Rently." }]); setChatInput(""); return; }
     const history = chatMessages.map(m => ({ role: m.role === "user" ? "user" : "model", text: m.text }));
@@ -1092,10 +1106,11 @@ function App() {
     }
     setChatBusy(false);
   }
-  async function runAdvisor(e) {
-    e.preventDefault();
-    const text = advisorInput.trim();
+  function sendChatMessage(e) { e.preventDefault(); sendChatText(chatInput); }
+  async function runAdvisorText(text) {
+    text = (text || "").trim();
     if (!text || advisorBusy) return;
+    setAdvisorInput(text);
     setAdvisorBusy(true);
     setAdvisorError("");
     setAdvisorResult(null);
@@ -1107,6 +1122,7 @@ function App() {
     }
     setAdvisorBusy(false);
   }
+  function runAdvisor(e) { e.preventDefault(); runAdvisorText(advisorInput); }
 
   async function handleAuth(e) {
     e.preventDefault();
@@ -1401,6 +1417,7 @@ function App() {
           h("input", { value: advisorInput, onChange: e => setAdvisorInput(e.target.value), placeholder: "e.g. tight budget, already have a study table, need storage", style: { flex: 1, minWidth: 220 }, disabled: advisorBusy }),
           h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: advisorBusy || !advisorInput.trim() }, advisorBusy ? "Thinking…" : "Get recommendation")
         ),
+        !advisorResult && h("div", { className: "rn-chat-faqs", style: { marginTop: 10 } }, ADVISOR_EXAMPLES.map(q => h("button", { key: q, className: "rn-chat-faq", onClick: () => runAdvisorText(q), disabled: advisorBusy }, q))),
         advisorError && h("p", { className: "rn-note", style: { color: "var(--magenta-dark)" } }, advisorError),
         advisorResult && h("div", { className: "rn-advisor-result" },
           h("p", null, advisorResult.reasoning),
@@ -2101,7 +2118,10 @@ function App() {
           h("button", { className: "rn-chat-close", onClick: () => setChatOpen(false), "aria-label": "Close chat" }, Icon("x", 16))
         ),
         h("div", { className: "rn-chat-body" },
-          chatMessages.length === 0 && h("p", { className: "rn-chat-hint" }, "Ask about pricing, storage, moves, your bookings, or how Rently works."),
+          chatMessages.length === 0 && h(React.Fragment, null,
+            h("p", { className: "rn-chat-hint" }, "Ask about pricing, storage, moves, your bookings, or how Rently works. Or try one of these:"),
+            h("div", { className: "rn-chat-faqs" }, CHAT_FAQS.map(q => h("button", { key: q, className: "rn-chat-faq", onClick: () => sendChatText(q), disabled: chatBusy }, q)))
+          ),
           chatMessages.map((m, i) => h("div", { key: i, className: "rn-chat-msg " + (m.role === "user" ? "rn-chat-msg-user" : "rn-chat-msg-ai") }, m.text)),
           chatBusy && h("div", { className: "rn-chat-msg rn-chat-msg-ai rn-chat-typing" }, "Thinking…")
         ),
