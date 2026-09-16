@@ -2204,6 +2204,7 @@ function App() {
       Logo(26),
       h("span", null, "Live pilot build \u00b7 backed by a real database \u00b7 built for the Rently pilot"),
       h("div", { style: { display: "flex", gap: 16 } },
+        h("a", { href: "/blog/" }, "Blog"),
         h("a", { href: "/privacy", onClick: e => { e.preventDefault(); goTo("privacy"); } }, "Privacy"),
         h("a", { href: "/terms", onClick: e => { e.preventDefault(); goTo("terms"); } }, "Terms")
       )
