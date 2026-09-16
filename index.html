@@ -449,12 +449,40 @@ const TRUST_POINTS = [
   { icon: "truck", title: "Campus delivery", desc: "Delivered and collected in a coordinated campus window, not a random courier at a random time." },
   { icon: "userCheck", title: "Verified students", desc: "Every booking is tied to a verified campus account, so deliveries go to the right room, every time." },
 ];
-const CHAT_FAQS = [
-  "What's in the full room bundle and how much is it?",
-  "How does semester storage work?",
-  "How do I pay, and is it safe?",
-  "What happens if I damage something?",
-];
+const CHAT_FAQS_BY_ROLE = {
+  student: [
+    "What's in the full room bundle and how much is it?",
+    "How does semester storage work?",
+    "How do I pay, and is it safe?",
+    "What happens if I damage something?",
+  ],
+  admin: [
+    "How do I mark a booking as paid?",
+    "How do I update stock for an item?",
+    "How do I change someone's account role?",
+    "What does the delivery batching recommendation do?",
+  ],
+  transporter: [
+    "How do I confirm a delivery with the pickup code?",
+    "What do I do once a booking is Confirmed?",
+    "How do I mark a storage pickup as checked in?",
+    "How do I mark a move request as completed?",
+  ],
+  partner: [
+    "What should I prepare for the next delivery?",
+    "What does 'Short by X' mean on my dashboard?",
+    "Does the manifest show student names or rooms?",
+    "How often does demand update?",
+  ],
+};
+function chatFaqsForRole(role) { return CHAT_FAQS_BY_ROLE[role] || CHAT_FAQS_BY_ROLE.student; }
+const CHAT_HINT_BY_ROLE = {
+  student: "Ask about pricing, storage, moves, your bookings, or how Rently works.",
+  admin: "Ask about managing bookings, inventory, roles, or payments.",
+  transporter: "Ask about the delivery/pickup/return workflow and pickup codes.",
+  partner: "Ask about stock, demand, or the order manifest.",
+};
+function chatHintForRole(role) { return (CHAT_HINT_BY_ROLE[role] || CHAT_HINT_BY_ROLE.student) + " Or try one of these:"; }
 const ADVISOR_EXAMPLES = [
   "Tight budget, I already have a mattress and chair",
   "I need everything, room is pretty bare right now",
@@ -2119,8 +2147,8 @@ function App() {
         ),
         h("div", { className: "rn-chat-body" },
           chatMessages.length === 0 && h(React.Fragment, null,
-            h("p", { className: "rn-chat-hint" }, "Ask about pricing, storage, moves, your bookings, or how Rently works. Or try one of these:"),
-            h("div", { className: "rn-chat-faqs" }, CHAT_FAQS.map(q => h("button", { key: q, className: "rn-chat-faq", onClick: () => sendChatText(q), disabled: chatBusy }, q)))
+            h("p", { className: "rn-chat-hint" }, chatHintForRole(profile && profile.role)),
+            h("div", { className: "rn-chat-faqs" }, chatFaqsForRole(profile && profile.role).map(q => h("button", { key: q, className: "rn-chat-faq", onClick: () => sendChatText(q), disabled: chatBusy }, q)))
           ),
           chatMessages.map((m, i) => h("div", { key: i, className: "rn-chat-msg " + (m.role === "user" ? "rn-chat-msg-user" : "rn-chat-msg-ai") }, m.text)),
           chatBusy && h("div", { className: "rn-chat-msg rn-chat-msg-ai rn-chat-typing" }, "Thinking…")
