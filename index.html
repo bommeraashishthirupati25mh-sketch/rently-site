@@ -1060,6 +1060,7 @@ function App() {
   async function callAiAssistant(mode, message, history) {
     const context = {
       catalog: aiCatalog(), bundlePrice: scaledBundlePrice, semesterBaselineDays: SEMESTER_BASELINE_DAYS, semesterLabel,
+      storageSmallPrice: 500, storageTrunkPrice: 800, movePrice: MOVE_PRICE,
       role: profile && profile.role,
       myBookingsSummary: myBookings.slice(0, 5).map(b => ({ id: b.id, status: b.status, payment_status: b.payment_status, items: b.items })),
       myStorageSummary: myStorage.slice(0, 5).map(s => ({ id: s.id, status: s.status, payment_status: s.payment_status })),

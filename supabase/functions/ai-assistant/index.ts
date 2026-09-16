@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_MODEL = "gemini-3.6-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const CORS_HEADERS = {
@@ -37,6 +37,10 @@ function buildChatPrompt(context: Record<string, unknown>) {
     .map((it: any) => `- ${it.name} (id: ${it.id}): Rs ${it.price} for the ${context.semesterBaselineDays ?? 90}-day baseline, scales with chosen dates`)
     .join("\n");
   const bundleLine = context.bundlePrice != null ? `Full bundle (all ${catalog.length} items together): Rs ${context.bundlePrice} at the baseline length.` : "";
+  const storageLine = context.storageSmallPrice != null
+    ? `Storage (flat, doesn't scale with dates): small bag (<=40L/10kg) Rs ${context.storageSmallPrice} per semester break; trunk/large box (<=100L/25kg) Rs ${context.storageTrunkPrice} per semester break.`
+    : "";
+  const moveLine = context.movePrice != null ? `Move-in or move-out transport (flat, per trip): Rs ${context.movePrice}.` : "";
   const semLine = context.semesterLabel ? `This student's current chosen semester window: ${context.semesterLabel}.` : "";
   const roleLine = context.role ? `This student's account role: ${context.role}.` : "";
   const myBookings = Array.isArray(context.myBookingsSummary) && context.myBookingsSummary.length
@@ -51,6 +55,8 @@ function buildChatPrompt(context: Record<string, unknown>) {
 Current catalog and prices:
 ${catalogLines}
 ${bundleLine}
+${storageLine}
+${moveLine}
 ${semLine}
 ${roleLine}
 ${myBookings}
@@ -79,7 +85,7 @@ async function callGemini(apiKey: string, systemInstruction: string, contents: {
   const body: Record<string, unknown> = {
     systemInstruction: { parts: [{ text: systemInstruction }] },
     contents,
-    generationConfig: { temperature: 0.4, maxOutputTokens: 500 },
+    generationConfig: { temperature: 0.4, maxOutputTokens: 1024, thinkingConfig: { thinkingBudget: 0 } },
   };
   if (responseSchema) {
     (body.generationConfig as Record<string, unknown>).responseMimeType = "application/json";
