@@ -769,6 +769,7 @@ function App() {
   const [lightboxImage, setLightboxImage] = useState(null);
   const [productDetail, setProductDetail] = useState(null);
   const [productImgIndex, setProductImgIndex] = useState(0);
+  const [productDetailSource, setProductDetailSource] = useState(null);
 
   useEffect(() => {
     db.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
@@ -1030,7 +1031,7 @@ function App() {
     opts = opts || {};
     const url = imageOf(id);
     const name = ITEM_DEFS[id] ? ITEM_DEFS[id].name : id;
-    const openDetail = opts.clickable ? (e => { e.stopPropagation(); openProductDetail(id); }) : undefined;
+    const openDetail = opts.clickable ? (e => { e.stopPropagation(); openProductDetail(id, opts.source); }) : undefined;
     if (url) {
       return h("img", {
         src: url, alt: name,
@@ -1080,7 +1081,12 @@ function App() {
             h("p", { style: { margin: 0, fontSize: 13.5, color: "var(--ink-soft)" } }, def.dimensions)
           ),
           stock < LOW_STOCK && h("p", { style: { fontSize: 12.5, color: "var(--magenta-dark)", marginTop: 14, fontWeight: 600 } }, "Only ", stock, " left for this semester"),
-          h("button", { className: "rn-btn rn-btn-primary", style: { width: "100%", justifyContent: "center", marginTop: 20 }, onClick: () => { toggleItem(id); setProductDetail(null); } }, selected ? "Remove from my room" : "Add to my room", Icon(selected ? "check" : "arrowRight", 16))
+          h("button", { className: "rn-btn rn-btn-primary", style: { width: "100%", justifyContent: "center", marginTop: 20 }, onClick: () => {
+            const wasSelected = selected;
+            toggleItem(id);
+            setProductDetail(null);
+            if (productDetailSource === "home" && !wasSelected) goTo("booking");
+          } }, selected ? "Remove from my room" : "Add to my room", Icon(selected ? "check" : "arrowRight", 16))
         )
       )
     );
@@ -1108,7 +1114,7 @@ function App() {
       return [...prev, id];
     });
   }
-  function openProductDetail(id) { setProductDetail(id); setProductImgIndex(0); }
+  function openProductDetail(id, source) { setProductDetail(id); setProductImgIndex(0); setProductDetailSource(source || null); }
   function displayName() {
     if (profile && profile.full_name && profile.full_name.trim()) return profile.full_name.trim();
     if (session && session.user.email) return session.user.email.split("@")[0];
@@ -1402,7 +1408,7 @@ function App() {
         h("div", { className: "rn-kit-panel" },
           h("span", { className: "rn-kit-label" }, "What's in the room-setup bundle"),
           h("div", { className: "rn-kit-grid" }, Object.keys(ITEM_DEFS).map(id =>
-            h("div", { key: id, className: "rn-kit-chip", style: { cursor: "pointer" }, onClick: () => openProductDetail(id) }, ItemVisual(id, 34, ITEM_DEFS[id].icon, { clickable: true }), h("div", { className: "rn-kit-chip-name" }, ITEM_DEFS[id].name), h("div", { className: "rn-kit-chip-price" }, money(scaledPriceOf(id)), " alone"))
+            h("div", { key: id, className: "rn-kit-chip", style: { cursor: "pointer" }, onClick: () => openProductDetail(id, "home") }, ItemVisual(id, 34, ITEM_DEFS[id].icon, { clickable: true, source: "home" }), h("div", { className: "rn-kit-chip-name" }, ITEM_DEFS[id].name), h("div", { className: "rn-kit-chip-price" }, money(scaledPriceOf(id)), " alone"))
           )),
           h("div", { className: "rn-kit-price-tag" }, h("div", null, h("b", null, money(scaledBundlePrice)), h("span", null, " full bundle, one semester")), bundleSavings > 0 && h("span", null, "save ", money(bundleSavings)))
         )
@@ -1552,7 +1558,8 @@ function App() {
             ? h("span", null, h("span", { style: { textDecoration: "line-through", color: "var(--ink-faint)", fontSize: 14, marginRight: 8 } }, money(allItemsSum)), h("b", null, money(cartTotal)))
             : h("b", null, money(cartTotal))
         ),
-        h("button", { className: "rn-link-btn", style: { marginTop: 10 }, onClick: () => setPolicyOpen(true) }, "View wear & damage policy")
+        h("button", { className: "rn-link-btn", style: { marginTop: 10 }, onClick: () => goTo("build") }, "Add more items"),
+        h("button", { className: "rn-link-btn", style: { marginTop: 10, marginLeft: 14 }, onClick: () => setPolicyOpen(true) }, "View wear & damage policy")
       )
     );
   }
