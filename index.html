@@ -152,6 +152,26 @@
   .rn-upsell button { margin-top: 8px; width: 100%; }
   .rn-error { color: var(--magenta-dark); font-size: 13.5px; margin-top: 10px; font-weight: 600; }
   .rn-note { color: var(--ink-soft); font-size: 13px; margin-top: 10px; }
+  .rn-advisor-card { border: 1px solid var(--line); border-radius: 14px; background: var(--cream-card); margin: 18px 0; overflow: hidden; }
+  .rn-advisor-toggle { width: 100%; display: flex; align-items: center; gap: 10px; padding: 14px 18px; background: none; border: none; cursor: pointer; font: inherit; font-weight: 600; font-size: 14px; color: var(--ink); text-align: left; }
+  .rn-advisor-toggle span { flex: 1; }
+  .rn-advisor-body { padding: 0 18px 18px; }
+  .rn-advisor-result { margin-top: 14px; padding: 14px; background: #fff; border-radius: 10px; border: 1px dashed var(--magenta); }
+  .rn-advisor-result p { margin: 0 0 10px; font-size: 13.5px; color: var(--ink-soft); }
+  .rn-chat-fab { position: fixed; bottom: 22px; right: 22px; width: 56px; height: 56px; border-radius: 50%; background: var(--magenta); color: #fff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,0.22); z-index: 60; }
+  .rn-chat-fab:hover { background: var(--magenta-dark); }
+  .rn-chat-wrap { position: fixed; inset: auto; z-index: 60; }
+  .rn-chat-panel { position: fixed; bottom: 90px; right: 22px; width: min(340px, calc(100vw - 32px)); max-height: 60vh; display: flex; flex-direction: column; background: var(--cream-card); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 12px 30px rgba(0,0,0,0.22); overflow: hidden; }
+  .rn-chat-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--ink); color: #fff; }
+  .rn-chat-close { background: none; border: none; color: #fff; cursor: pointer; display: flex; }
+  .rn-chat-body { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .rn-chat-hint { font-size: 12.5px; color: var(--ink-faint); margin: 0; }
+  .rn-chat-msg { font-size: 13.5px; padding: 8px 12px; border-radius: 12px; max-width: 88%; line-height: 1.4; }
+  .rn-chat-msg-user { align-self: flex-end; background: var(--magenta); color: #fff; }
+  .rn-chat-msg-ai { align-self: flex-start; background: #fff; border: 1px solid var(--line); color: var(--ink); }
+  .rn-chat-typing { opacity: 0.6; }
+  .rn-chat-input-row { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
+  .rn-chat-input-row input { flex: 1; padding: 9px 12px; border-radius: 9px; border: 1.5px solid var(--line); font: inherit; }
   .rn-booking-grid { display: grid; grid-template-columns: 1fr 340px; gap: 32px; padding: 16px 0 60px; align-items: start; }
   .rn-form-card { border: 1px solid var(--line); border-radius: 16px; padding: 26px; background: #fff; }
   .rn-form-card h3 { font-size: 20px; margin: 0 0 18px; }
@@ -463,6 +483,8 @@ const ICON_PATHS = {
   clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="4" rx="1"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="16" y2="15"/>',
   chair: '<path d="M6 3v8"/><path d="M18 3v8"/><path d="M6 11h12v3a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-3z"/><path d="M8 16v5"/><path d="M16 16v5"/>',
   wardrobe: '<rect x="4" y="2" width="16" height="20" rx="1.5"/><line x1="12" y1="2" x2="12" y2="22"/><circle cx="9.5" cy="12" r="0.6"/><circle cx="14.5" cy="12" r="0.6"/>',
+  messageCircle: '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
+  sparkles: '<path d="M12 3l1.6 4.2L18 9l-4.4 1.8L12 15l-1.6-4.2L6 9l4.4-1.8L12 3z"/><path d="M19 15l.8 2.1L22 18l-2.2.9L19 21l-.8-2.1L16 18l2.2-.9L19 15z"/>',
 };
 function Icon(name, size, color) {
   size = size || 18;
@@ -618,6 +640,15 @@ function App() {
   });
   const [navOpen, setNavOpen] = useState(false);
   const [cartIds, setCartIds] = useState([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatBusy, setChatBusy] = useState(false);
+  const [advisorOpen, setAdvisorOpen] = useState(false);
+  const [advisorInput, setAdvisorInput] = useState("");
+  const [advisorBusy, setAdvisorBusy] = useState(false);
+  const [advisorResult, setAdvisorResult] = useState(null);
+  const [advisorError, setAdvisorError] = useState("");
   const [inventory, setInventory] = useState([]);
   const [itemDemand, setItemDemand] = useState({});
   const [itemManifest, setItemManifest] = useState([]);
@@ -1023,6 +1054,59 @@ function App() {
     return "Student";
   }
 
+  function aiCatalog() {
+    return Object.keys(ITEM_DEFS).map(id => ({ id, name: ITEM_DEFS[id].name, price: scaledPriceOf(id), desc: ITEM_DEFS[id].blurb }));
+  }
+  async function callAiAssistant(mode, message, history) {
+    const context = {
+      catalog: aiCatalog(), bundlePrice: scaledBundlePrice, semesterBaselineDays: SEMESTER_BASELINE_DAYS, semesterLabel,
+      role: profile && profile.role,
+      myBookingsSummary: myBookings.slice(0, 5).map(b => ({ id: b.id, status: b.status, payment_status: b.payment_status, items: b.items })),
+      myStorageSummary: myStorage.slice(0, 5).map(s => ({ id: s.id, status: s.status, payment_status: s.payment_status })),
+      myMovesSummary: myMoves.slice(0, 5).map(m => ({ id: m.id, status: m.status, payment_status: m.payment_status })),
+    };
+    const res = await fetch(SUPABASE_URL + "/functions/v1/ai-assistant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token, apikey: SUPABASE_KEY },
+      body: JSON.stringify({ mode, message, history: history || [], context }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "AI request failed.");
+    return data;
+  }
+  async function sendChatMessage(e) {
+    e.preventDefault();
+    const text = chatInput.trim();
+    if (!text || chatBusy) return;
+    if (!session) { setChatMessages(prev => [...prev, { role: "user", text }, { role: "model", text: "Log in first and I can help with questions about your bookings and Rently." }]); setChatInput(""); return; }
+    const history = chatMessages.map(m => ({ role: m.role === "user" ? "user" : "model", text: m.text }));
+    setChatMessages(prev => [...prev, { role: "user", text }]);
+    setChatInput("");
+    setChatBusy(true);
+    try {
+      const data = await callAiAssistant("chat", text, history);
+      setChatMessages(prev => [...prev, { role: "model", text: data.reply }]);
+    } catch (err) {
+      setChatMessages(prev => [...prev, { role: "model", text: "Sorry, something went wrong: " + err.message }]);
+    }
+    setChatBusy(false);
+  }
+  async function runAdvisor(e) {
+    e.preventDefault();
+    const text = advisorInput.trim();
+    if (!text || advisorBusy) return;
+    setAdvisorBusy(true);
+    setAdvisorError("");
+    setAdvisorResult(null);
+    try {
+      const data = await callAiAssistant("advisor", text);
+      setAdvisorResult(data);
+    } catch (err) {
+      setAdvisorError(err.message);
+    }
+    setAdvisorBusy(false);
+  }
+
   async function handleAuth(e) {
     e.preventDefault();
     setAuthMsg(""); setBusy(true);
@@ -1304,10 +1388,34 @@ function App() {
     );
   }
 
+  function AdvisorCard() {
+    if (!session) return null;
+    return h("div", { className: "rn-advisor-card" },
+      h("button", { className: "rn-advisor-toggle", onClick: () => setAdvisorOpen(v => !v) },
+        Icon("sparkles", 18, "var(--magenta-dark)"),
+        h("span", null, "Not sure what to pick? Ask the AI room advisor"),
+        Icon(advisorOpen ? "minus" : "plus", 16)
+      ),
+      advisorOpen && h("div", { className: "rn-advisor-body" },
+        h("form", { onSubmit: runAdvisor, style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+          h("input", { value: advisorInput, onChange: e => setAdvisorInput(e.target.value), placeholder: "e.g. tight budget, already have a study table, need storage", style: { flex: 1, minWidth: 220 }, disabled: advisorBusy }),
+          h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: advisorBusy || !advisorInput.trim() }, advisorBusy ? "Thinking…" : "Get recommendation")
+        ),
+        advisorError && h("p", { className: "rn-note", style: { color: "var(--magenta-dark)" } }, advisorError),
+        advisorResult && h("div", { className: "rn-advisor-result" },
+          h("p", null, advisorResult.reasoning),
+          advisorResult.recommended_item_ids.length > 0 && h("button", { className: "rn-btn rn-btn-ghost", onClick: () => { setCartIds(advisorResult.recommended_item_ids); setAdvisorResult(null); setAdvisorInput(""); } },
+            "Apply: ", advisorResult.recommended_item_ids.map(id => ITEM_DEFS[id] ? ITEM_DEFS[id].name : id).join(", ")
+          )
+        )
+      )
+    );
+  }
   function BuildView() {
     return h(React.Fragment, null,
       h("div", { className: "rn-page-head" }, h("h1", { className: "rn-display" }, "Build your room"), h("p", null, "Pick what your room actually needs, category by category. Your price updates as you go.")),
       SemesterBar(true),
+      AdvisorCard(),
       h("div", { className: "rn-build-grid" },
         h("div", null, CATEGORIES.map(cat => h("div", { key: cat.key, className: "rn-cat-row" },
           h("span", { className: "rn-cat-label" }, cat.label),
@@ -1984,6 +2092,28 @@ function App() {
     );
   }
 
+  function ChatWidget() {
+    if (!session || !authReady) return null;
+    return h("div", { className: "rn-chat-wrap" },
+      chatOpen && h("div", { className: "rn-chat-panel" },
+        h("div", { className: "rn-chat-head" },
+          h("b", null, "Ask Rently"),
+          h("button", { className: "rn-chat-close", onClick: () => setChatOpen(false), "aria-label": "Close chat" }, Icon("x", 16))
+        ),
+        h("div", { className: "rn-chat-body" },
+          chatMessages.length === 0 && h("p", { className: "rn-chat-hint" }, "Ask about pricing, storage, moves, your bookings, or how Rently works."),
+          chatMessages.map((m, i) => h("div", { key: i, className: "rn-chat-msg " + (m.role === "user" ? "rn-chat-msg-user" : "rn-chat-msg-ai") }, m.text)),
+          chatBusy && h("div", { className: "rn-chat-msg rn-chat-msg-ai rn-chat-typing" }, "Thinking…")
+        ),
+        h("form", { className: "rn-chat-input-row", onSubmit: sendChatMessage },
+          h("input", { value: chatInput, onChange: e => setChatInput(e.target.value), placeholder: "Type a question…", disabled: chatBusy }),
+          h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: chatBusy || !chatInput.trim() }, "Send")
+        )
+      ),
+      h("button", { className: "rn-chat-fab", onClick: () => setChatOpen(v => !v), "aria-label": "Ask Rently" }, Icon(chatOpen ? "x" : "messageCircle", 22))
+    );
+  }
+
   const staffRole = profile && (profile.role === "admin" || profile.role === "transporter" || profile.role === "partner") ? profile.role : null;
   const staffBlocked = h("div", { className: "rn-loading" }, "Staff accounts don't book as students. Use your dashboard instead.");
 
@@ -2018,7 +2148,8 @@ function App() {
     ),
     PolicyModal(policyOpen, () => setPolicyOpen(false)),
     ProductDetailModal(),
-    ImageLightbox(lightboxImage, () => setLightboxImage(null))
+    ImageLightbox(lightboxImage, () => setLightboxImage(null)),
+    ChatWidget()
   );
 }
 
