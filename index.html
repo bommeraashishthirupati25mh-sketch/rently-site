@@ -197,6 +197,11 @@
   .rn-confirm-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--magenta-tint); color: var(--magenta-dark); display: flex; align-items: center; justify-content: center; margin: 0 auto 22px; }
   .rn-confirm-wrap h1 { font-size: 34px; margin: 0 0 10px; }
   .rn-confirm-wrap p { color: var(--ink-soft); margin: 0 0 26px; }
+  /* shine border */
+  .rn-shine-host { position: relative; }
+  .rn-shine { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; pointer-events: none; background-size: 300% 300%; padding: var(--border-width, 1px); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; will-change: background-position; animation: rnShine var(--duration, 14s) linear infinite; }
+  @keyframes rnShine { 0% { background-position: 0% 0%; } 50% { background-position: 100% 100%; } 100% { background-position: 0% 0%; } }
+  @media (prefers-reduced-motion: reduce) { .rn-shine { animation: none; } }
   /* wishlist */
   .rn-heart { border: none; background: transparent; cursor: pointer; padding: 6px; border-radius: 50%; color: var(--ink-faint); line-height: 0; margin-left: auto; align-self: flex-start; flex-shrink: 0; }
   .rn-heart:hover { background: var(--magenta-tint); color: var(--magenta-dark); }
@@ -244,7 +249,8 @@
   .rn-reveal-section { margin: 34px 0 30px; text-align: center; }
   .rn-reveal-section h3 { font-family: 'Big Shoulders Display', 'Inter', sans-serif; font-weight: 800; font-size: 26px; margin: 0 0 4px; }
   .rn-reveal-section > p { margin: 0 0 18px; font-size: 14px; }
-  .rn-reveal-canvas { display: block; width: 100%; max-width: 300px; aspect-ratio: 9 / 16; height: auto; margin: 0 auto; border-radius: 22px; box-shadow: 0 18px 40px rgba(21,46,41,0.28); background: #173630; }
+  .rn-reveal-frame { position: relative; width: 100%; max-width: 300px; margin: 0 auto; border-radius: 22px; box-shadow: 0 18px 40px rgba(21,46,41,0.28); }
+  .rn-reveal-canvas { display: block; width: 100%; aspect-ratio: 9 / 16; height: auto; border-radius: 22px; background: #173630; }
   .rn-reveal-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
   .rn-reveal-actions .rn-btn { justify-content: center; }
   .rn-receipt { border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; text-align: left; background: #fff; margin-bottom: 26px; }
@@ -711,7 +717,10 @@ function RoomRevealCard(props) {
     setBusy(false);
   }
   return h("div", { className: "rn-reveal" },
-    h("canvas", { ref, className: "rn-reveal-canvas", role: "img", "aria-label": "Your Room Reveal card: " + roomPersona(props.ids).title }),
+    h("div", { className: "rn-reveal-frame" },
+      h("canvas", { ref, className: "rn-reveal-canvas", role: "img", "aria-label": "Your Room Reveal card: " + roomPersona(props.ids).title }),
+      h(ShineBorder, { borderWidth: 3, duration: 8, shineColor: ["#D6336C", "#FFD23F", "#F5F1E7"] })
+    ),
     h("div", { className: "rn-reveal-actions" },
       h("button", { className: "rn-btn rn-btn-primary", onClick: canShare ? share : download, disabled: busy }, Icon("arrowRight", 16), canShare ? "Share to Stories" : "Download for Stories"),
       canShare && h("button", { className: "rn-btn rn-btn-ghost", onClick: download, disabled: busy }, "Save image")
@@ -722,6 +731,11 @@ function RoomRevealCard(props) {
 function wishKey(uid) { return "rently_wishlist_" + (uid || "guest"); }
 function readWish(uid) { try { const v = JSON.parse(localStorage.getItem(wishKey(uid)) || "[]"); return Array.isArray(v) ? v.filter(function (i) { return ITEM_DEFS[i]; }) : []; } catch (e) { return []; } }
 function writeWish(uid, ids) { try { localStorage.setItem(wishKey(uid), JSON.stringify(ids)); } catch (e) {} }
+// Shine Border: an animated gradient ring. Put it inside a position:relative parent that has a border-radius.
+function ShineBorder(props) {
+  const colors = Array.isArray(props.shineColor) ? props.shineColor.join(",") : (props.shineColor || "#000000");
+  return h("div", { className: "rn-shine", "aria-hidden": "true", style: { "--border-width": (props.borderWidth || 1) + "px", "--duration": (props.duration || 14) + "s", backgroundImage: "radial-gradient(transparent,transparent," + colors + ",transparent,transparent)" } });
+}
 function HeartIcon(filled, size) {
   return h("svg", { width: size || 18, height: size || 18, viewBox: "0 0 24 24", fill: filled ? "currentColor" : "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" },
     h("path", { d: "M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21.2l7.8-7.7 1-1.1a5.5 5.5 0 0 0 0-7.8z" }));
@@ -1772,7 +1786,8 @@ function App() {
             h("div", { className: "rn-stat" }, h("b", null, "2 dates"), h("span", null, "delivered and collected for you"))
           )
         ),
-        h("div", { className: "rn-kit-panel" },
+        h("div", { className: "rn-kit-panel rn-shine-host" },
+          h(ShineBorder, { borderWidth: 2, duration: 12, shineColor: ["#D6336C", "#F3A9C4", "#F5F1E7"] }),
           h("span", { className: "rn-kit-label" }, "What's in the room-setup bundle"),
           h("div", { className: "rn-kit-grid" }, Object.keys(ITEM_DEFS).map(id =>
             h("div", { key: id, className: "rn-kit-chip", style: { cursor: "pointer" }, onClick: () => openProductDetail(id, "home") }, ItemVisual(id, 34, ITEM_DEFS[id].icon, { clickable: true, source: "home" }), h("div", { className: "rn-kit-chip-name" }, ITEM_DEFS[id].name), h("div", { className: "rn-kit-chip-price" }, money(scaledPriceOf(id)), " alone"))
@@ -2011,7 +2026,8 @@ function App() {
         qrUrl = qr.createDataURL(6, 4);
       } catch (e) { console.error("QR generation failed:", e.message); }
     }
-    return h("div", { className: "rn-acct-card", style: { marginTop: 20, textAlign: "center" } },
+    return h("div", { className: "rn-acct-card rn-shine-host", style: { marginTop: 20, textAlign: "center" } },
+      h(ShineBorder, { borderWidth: 2, duration: 10, shineColor: ["#D6336C", "#152E29"] }),
       h("h3", { style: { margin: "0 0 4px" } }, "Pickup code"),
       h("p", { style: { margin: "0 0 16px", fontSize: 13.5, color: "var(--ink-soft)" } }, "Show this to the delivery crew on move-in day. It's how they confirm the handover is really you."),
       qrUrl
