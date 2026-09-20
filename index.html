@@ -203,9 +203,30 @@
   @keyframes rnShine { 0% { background-position: 0% 0%; } 50% { background-position: 100% 100%; } 100% { background-position: 0% 0%; } }
   @media (prefers-reduced-motion: reduce) { .rn-shine { animation: none; } }
   /* wishlist */
-  .rn-heart { border: none; background: transparent; cursor: pointer; padding: 6px; border-radius: 50%; color: var(--ink-faint); line-height: 0; margin-left: auto; align-self: flex-start; flex-shrink: 0; }
-  .rn-heart:hover { background: var(--magenta-tint); color: var(--magenta-dark); }
-  .rn-heart.on { color: var(--magenta); }
+  .rn-heart-wrap { margin-left: auto; align-self: flex-start; flex-shrink: 0; line-height: 0; }
+  /* PulseHeart */
+  .pulse-heart { --ph-size: 40px; --ph-corner: 32px; --ph-pill: #232326; --ph-idle: #8b8b93; --ph-liked: #ff4d6d; --ph-text: #f5f5f5; --ph-roll: 350ms; --ph-stroke: 2.5px; --ph-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    position: relative; display: inline-flex; align-items: center; justify-content: center; margin: 0; padding: 0; border: 0; border-radius: var(--ph-corner); background: none; color: var(--ph-text); font-family: inherit; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; outline: none; transition: transform 160ms var(--ph-ease-out); }
+  .pulse-heart[data-pressed] { transform: scale(0.97); }
+  .pulse-heart:focus-visible { outline: 2px solid color-mix(in srgb, var(--ph-liked) 60%, transparent); outline-offset: 3px; }
+  .pulse-heart:disabled { opacity: 0.55; cursor: default; }
+  .pulse-heart__pill { display: inline-flex; align-items: center; gap: calc(var(--ph-size) * 0.25); padding: calc(var(--ph-size) * 0.3); padding-inline-end: calc(var(--ph-size) * 0.4); border-radius: var(--ph-corner); background: var(--ph-pill); transform-origin: center; }
+  .pulse-heart[data-no-count] .pulse-heart__pill { padding-inline-end: calc(var(--ph-size) * 0.3); }
+  .pulse-heart__heart { display: block; width: var(--ph-size); height: var(--ph-size); color: var(--ph-idle); transform-origin: center; transition: color 160ms ease; }
+  .pulse-heart__heart svg { display: block; width: 100%; height: 100%; overflow: visible; fill: none; stroke: currentColor; stroke-width: var(--ph-stroke); stroke-linecap: round; stroke-linejoin: round; }
+  .pulse-heart[data-solid] .pulse-heart__heart svg, .pulse-heart[data-liked='true'] .pulse-heart__heart svg { fill: currentColor; }
+  .pulse-heart[data-liked='true'] .pulse-heart__heart { color: var(--ph-liked); }
+  .pulse-heart[data-running] .pulse-heart__heart, .pulse-heart[data-instant] .pulse-heart__heart { transition: none; }
+  @media (hover: hover) and (pointer: fine) { .pulse-heart:not([data-liked='true']):not(:disabled):hover .pulse-heart__heart { color: color-mix(in srgb, var(--ph-idle) 45%, var(--ph-liked)); } }
+  .pulse-heart__count { display: inline-flex; font-size: calc(var(--ph-size) * 0.5); font-weight: 600; line-height: 1; letter-spacing: -0.1px; font-variant-numeric: tabular-nums; color: var(--ph-text); }
+  .pulse-heart__count > span { display: block; height: 1em; }
+  .pulse-heart__slot { position: relative; overflow: hidden; }
+  .pulse-heart__roll { display: flex; flex-direction: column; transition: transform var(--ph-roll) var(--ph-ease-out); }
+  .pulse-heart__roll > span { display: block; height: 1em; line-height: 1; }
+  .pulse-heart__sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  @media (pointer: coarse) { .pulse-heart { min-width: 44px; min-height: 44px; } }
+  @media (prefers-contrast: more) { .pulse-heart__pill { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ph-text) 25%, transparent); } }
+  @media (prefers-reduced-motion: reduce) { .pulse-heart { transition: none; } .pulse-heart__heart { transition: color 200ms ease; } .pulse-heart__roll { transition: none; } }
   .rn-wish-btn { position: relative; border: none; background: transparent; cursor: pointer; padding: 8px; border-radius: 50%; color: var(--ink-soft); line-height: 0; }
   .rn-wish-btn:hover, .rn-wish-btn.active { background: var(--cream-card); color: var(--magenta-dark); }
   .rn-wish-badge { position: absolute; top: 0; right: 0; background: var(--magenta); color: #fff; font-size: 10.5px; font-weight: 700; min-width: 17px; height: 17px; border-radius: 9px; display: flex; align-items: center; justify-content: center; line-height: 1; }
@@ -735,6 +756,154 @@ function writeWish(uid, ids) { try { localStorage.setItem(wishKey(uid), JSON.str
 function ShineBorder(props) {
   const colors = Array.isArray(props.shineColor) ? props.shineColor.join(",") : (props.shineColor || "#000000");
   return h("div", { className: "rn-shine", "aria-hidden": "true", style: { "--border-width": (props.borderWidth || 1) + "px", "--duration": (props.duration || 14) + "s", backgroundImage: "radial-gradient(transparent,transparent," + colors + ",transparent,transparent)" } });
+}
+// ---- PulseHeart (port of the React Bits component): a heart that dips to a dot, flips, and rebounds ----
+const PH_OUT = 0.4;
+const PH_HEART = "M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21.2l7.8-7.7 1-1.1a5.5 5.5 0 0 0 0-7.8z";
+function phBack(k, c) { const u = k - 1; return 1 + (c + 1) * Math.pow(u, 3) + c * Math.pow(u, 2); }
+function phSwell(t, c) { return t <= 0 ? 0 : t < PH_OUT ? 1 - Math.pow(1 - t / PH_OUT, 3) : 1 - phBack((t - PH_OUT) / (1 - PH_OUT), c); }
+function phFormat(n) { return new Intl.NumberFormat().format(n); }
+function phReduced() { return typeof window !== "undefined" && !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); }
+function PulseHeart(props) {
+  const likedProp = props.liked, defaultLiked = props.defaultLiked || false, count = props.count || 0, onChange = props.onChange;
+  const showCount = props.showCount !== undefined ? props.showCount : true, icon = props.icon || "heart";
+  const idleOutline = props.idleOutline !== undefined ? props.idleOutline : true, size = props.size || 40, corner = props.corner !== undefined ? props.corner : 32;
+  const likedColor = props.likedColor || "#ff4d6d", idleColor = props.idleColor || "#8b8b93", pillColor = props.pillColor || "#232326", textColor = props.textColor || "#f5f5f5";
+  const duration = props.duration || 560, dotSize = props.dotSize !== undefined ? props.dotSize : 0.3, overshoot = props.overshoot !== undefined ? props.overshoot : 1.7;
+  const beat = props.beat !== undefined ? props.beat : 3, rollDuration = props.rollDuration || 350, disabled = props.disabled || false, label = props.label || "Like", className = props.className || "";
+
+  const controlled = likedProp !== undefined;
+  const [inner, setInner] = useState(defaultLiked);
+  const [total, setTotal] = useState(count);
+  const liked = controlled ? likedProp : inner;
+  const [shown, setShown] = useState({ liked: liked, count: count });
+  const [roll, setRoll] = useState(null);
+
+  const rootRef = useRef(null), pillRef = useRef(null), heartRef = useRef(null), glyphRef = useRef(null), rollRef = useRef(null);
+  const raf = useRef(0), rollTimer = useRef(0), viaPointer = useRef(false);
+  const shownRef = useRef(shown);
+  const logical = useRef({ liked: liked, count: total });
+  logical.current = { liked: liked, count: total };
+  const cfg = useRef({ duration: duration, dotSize: dotSize, overshoot: overshoot, beat: beat, rollDuration: rollDuration });
+  cfg.current = { duration: duration, dotSize: dotSize, overshoot: overshoot, beat: beat, rollDuration: rollDuration };
+
+  useEffect(function () { setTotal(count); }, [count]);
+  useEffect(function () {
+    if (raf.current) return;
+    if (shownRef.current.liked === liked && shownRef.current.count === total) return;
+    shownRef.current = { liked: liked, count: total };
+    setShown(shownRef.current);
+  }, [liked, total]);
+  React.useLayoutEffect(function () {
+    const root = rootRef.current;
+    if (!root || root.dataset.instant === undefined) return;
+    root.getBoundingClientRect();
+    delete root.dataset.instant;
+  }, [shown]);
+  React.useLayoutEffect(function () {
+    const el = rollRef.current;
+    if (!el || !roll) return;
+    el.style.transition = "none";
+    el.style.transform = "translateY(" + (roll.up ? "0" : "-1em") + ")";
+    el.getBoundingClientRect();
+    el.style.transition = "";
+    el.style.transform = "translateY(" + (roll.up ? "-1em" : "0") + ")";
+  }, [roll]);
+  useEffect(function () { return function () { cancelAnimationFrame(raf.current); clearTimeout(rollTimer.current); }; }, []);
+
+  function startRoll(from, to) {
+    if (from === to) return;
+    const a = phFormat(from), b = phFormat(to);
+    const changed = a.length === b.length ? b.split("").reduce(function (acc, ch, i) { if (ch !== a[i]) acc.push(i); return acc; }, []) : [];
+    setRoll({ a: a, b: b, at: changed.length === 1 ? changed[0] : -1, up: to > from });
+    clearTimeout(rollTimer.current);
+    rollTimer.current = setTimeout(function () { setRoll(null); }, cfg.current.rollDuration);
+  }
+  function run(nextLiked, nextCount) {
+    const root = rootRef.current, heart = heartRef.current, pill = pillRef.current;
+    if (!root || !heart || !pill) return;
+    const glyph = glyphRef.current;
+    root.dataset.running = "";
+    let swapped = false, prev = 0;
+    const t0 = performance.now();
+    const tick = function (now) {
+      const D = cfg.current.duration, dot = cfg.current.dotSize, c = cfg.current.overshoot, B = cfg.current.beat;
+      const t = Math.min(1, (now - t0) / D);
+      const step = prev ? now - prev : 1000 / 60;
+      prev = now;
+      const sw = phSwell(t, c), k = 1 - (1 - dot) * sw;
+      if (glyph) glyph.setAttribute("transform", "translate(12 12) scale(" + k + ") translate(-12 -12)");
+      else heart.style.transform = "scale(" + k + ")";
+      pill.style.transform = "scale(" + (1 - (B / 100) * sw) + ")";
+      if (!swapped && t + step / 2 / D >= PH_OUT) {
+        swapped = true;
+        root.dataset.liked = String(nextLiked);
+        startRoll(shownRef.current.count, nextCount);
+        shownRef.current = { liked: nextLiked, count: nextCount };
+        setShown(shownRef.current);
+      }
+      if (t < 1) { raf.current = requestAnimationFrame(tick); return; }
+      raf.current = 0;
+      if (glyph) glyph.removeAttribute("transform");
+      heart.style.transform = "";
+      pill.style.transform = "";
+      delete root.dataset.running;
+      const l = logical.current;
+      if (l.liked !== shownRef.current.liked || l.count !== shownRef.current.count) {
+        shownRef.current = { liked: l.liked, count: l.count };
+        setShown(shownRef.current);
+      }
+    };
+    raf.current = requestAnimationFrame(tick);
+  }
+
+  function handlePointerDown(e) {
+    if (e.button !== 0 || disabled) return;
+    viaPointer.current = true;
+    if (!phReduced() && rootRef.current) rootRef.current.dataset.pressed = "";
+  }
+  function handlePointerUp() { if (rootRef.current) delete rootRef.current.dataset.pressed; }
+  function handlePointerCancel() { viaPointer.current = false; handlePointerUp(); }
+  function handleKeyDown() { viaPointer.current = false; }
+  function handleClick(e) {
+    if (disabled || raf.current) return;
+    const pointer = viaPointer.current && e.detail !== 0;
+    viaPointer.current = false;
+    const nextLiked = !liked, nextCount = total + (nextLiked ? 1 : -1);
+    if (!controlled) setInner(nextLiked);
+    setTotal(nextCount);
+    if (onChange) onChange(nextLiked, nextCount);
+    if (pointer && !phReduced()) run(nextLiked, nextCount);
+    else if (rootRef.current) rootRef.current.dataset.instant = "";
+  }
+
+  const text = phFormat(shown.count);
+  const cells = roll
+    ? (roll.at === -1
+        ? [{ top: roll.up ? roll.a : roll.b, bottom: roll.up ? roll.b : roll.a }]
+        : roll.b.split("").map(function (ch, i) { return i === roll.at ? { top: roll.up ? roll.a[i] : ch, bottom: roll.up ? ch : roll.a[i] } : { ch: ch }; }))
+    : text.split("").map(function (ch) { return { ch: ch }; });
+
+  return h("button", {
+    ref: rootRef, type: "button", "aria-pressed": liked, disabled: disabled, "data-liked": String(shown.liked),
+    "data-solid": idleOutline ? undefined : "", "data-no-count": showCount ? undefined : "",
+    className: "pulse-heart" + (className ? " " + className : ""),
+    style: { "--ph-size": size + "px", "--ph-corner": corner + "px", "--ph-pill": pillColor, "--ph-idle": idleColor, "--ph-liked": likedColor, "--ph-text": textColor, "--ph-roll": rollDuration + "ms", "--ph-stroke": (1.5 * size / 24) + "px" },
+    onPointerDown: handlePointerDown, onPointerUp: handlePointerUp, onPointerLeave: handlePointerUp, onPointerCancel: handlePointerCancel, onKeyDown: handleKeyDown, onClick: handleClick,
+  },
+    h("span", { ref: pillRef, className: "pulse-heart__pill" },
+      h("span", { ref: heartRef, className: "pulse-heart__heart", "aria-hidden": "true" },
+        icon === "heart"
+          ? h("svg", { viewBox: "0 0 24 24", xmlns: "http://www.w3.org/2000/svg" }, h("g", { ref: glyphRef }, h("path", { d: PH_HEART, vectorEffect: "non-scaling-stroke" })))
+          : icon),
+      showCount ? h("span", { className: "pulse-heart__count", "aria-hidden": "true" }, cells.map(function (cell, i) {
+        return "ch" in cell
+          ? h("span", { key: "c" + i }, cell.ch)
+          : h("span", { key: "r" + i, className: "pulse-heart__slot" }, h("span", { ref: rollRef, className: "pulse-heart__roll" }, h("span", null, cell.top), h("span", null, cell.bottom)));
+      })) : null,
+      h("span", { className: "pulse-heart__sr" }, showCount ? label + ", " + phFormat(total) : label)
+    )
+  );
 }
 function HeartIcon(filled, size) {
   return h("svg", { width: size || 18, height: size || 18, viewBox: "0 0 24 24", fill: filled ? "currentColor" : "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" },
@@ -1431,13 +1600,15 @@ function App() {
             h("p", { style: { margin: 0, fontSize: 13.5, color: "var(--ink-soft)" } }, def.dimensions)
           ),
           stock < LOW_STOCK && h("p", { style: { fontSize: 12.5, color: "var(--magenta-dark)", marginTop: 14, fontWeight: 600 } }, "Only ", stock, " left for this semester"),
-          h("button", { className: "rn-btn rn-btn-primary", style: { width: "100%", justifyContent: "center", marginTop: 20 }, onClick: () => {
-            const wasSelected = selected;
-            toggleItem(id);
-            setProductDetail(null);
-            if (productDetailSource === "home" && !wasSelected) goTo("booking");
-          } }, selected ? "Remove from my room" : "Add to my room", Icon(selected ? "check" : "arrowRight", 16)),
-          h("button", { className: "rn-btn rn-btn-ghost", style: { width: "100%", justifyContent: "center", marginTop: 10 }, "aria-pressed": wishlist.includes(id), onClick: () => toggleWish(id) }, HeartIcon(wishlist.includes(id), 16), wishlist.includes(id) ? "Saved to wishlist" : "Save for later")
+          h("div", { style: { display: "flex", gap: 10, alignItems: "center", marginTop: 20 } },
+            h(PulseHeart, { liked: wishlist.includes(id), onChange: () => toggleWish(id), showCount: false, size: 22, corner: 26, label: "Save " + def.name + " for later", pillColor: "#ECE5D3", idleColor: "#7C8C86", likedColor: "#D6336C", textColor: "#152E29" }),
+            h("button", { className: "rn-btn rn-btn-primary", style: { flex: 1, justifyContent: "center" }, onClick: () => {
+              const wasSelected = selected;
+              toggleItem(id);
+              setProductDetail(null);
+              if (productDetailSource === "home" && !wasSelected) goTo("booking");
+            } }, selected ? "Remove from my room" : "Add to my room", Icon(selected ? "check" : "arrowRight", 16))
+          )
         )
       )
     );
@@ -1922,7 +2093,8 @@ function App() {
                 h("span", { style: { display: "block", fontSize: 11.5, color: "var(--ink-faint)", marginTop: 2, maxWidth: 220 } }, ITEM_DEFS[id].blurb),
                 h("button", { className: "rn-link-btn", style: { fontSize: 11.5, marginTop: 4 }, onClick: e => { e.stopPropagation(); openProductDetail(id); } }, "View details")
               ),
-              h("button", { className: "rn-heart" + (wishlist.includes(id) ? " on" : ""), "aria-pressed": wishlist.includes(id), "aria-label": (wishlist.includes(id) ? "Remove " : "Save ") + ITEM_DEFS[id].name + (wishlist.includes(id) ? " from wishlist" : " for later"), onClick: e => { e.stopPropagation(); toggleWish(id); }, onKeyDown: e => e.stopPropagation() }, HeartIcon(wishlist.includes(id), 18))
+              h("span", { className: "rn-heart-wrap", onClick: e => e.stopPropagation(), onKeyDown: e => e.stopPropagation() },
+                h(PulseHeart, { liked: wishlist.includes(id), onChange: () => toggleWish(id), showCount: false, size: 18, corner: 22, label: "Save " + ITEM_DEFS[id].name + " for later", pillColor: "#ECE5D3", idleColor: "#7C8C86", likedColor: "#D6336C", textColor: "#152E29", duration: 480 }))
             );
           }))
         ))),
