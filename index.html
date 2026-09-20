@@ -384,7 +384,16 @@
     .rn-nav-blog { margin-left: 0; padding-left: 10px; margin-top: 6px; padding-top: 14px; border-left: none; border-top: 1.5px solid var(--line); }
     .rn-my-rently { font-size: 12.5px; padding: 8px 12px; }
     .rn-logout { font-size: 11.5px; }
+    /* keep the logged-in header (logo, heart, account buttons, burger) inside the screen width */
+    .rn-header-inner { gap: 8px; }
+    .rn-header-right { min-width: 0; gap: 4px; }
+    .rn-wish-btn { padding: 6px; }
+    /* iOS Safari zooms the whole page when a field under 16px gets focus, then it pans sideways */
+    input, select, textarea { font-size: 16px !important; }
   }
+  @media (max-width: 420px) { .rn-logo-word { display: none; } }
+  /* last-resort guard: never let anything widen the page sideways */
+  @supports (overflow: clip) { html, body { overflow-x: clip; } }
 
   /* ---- Small phone: tighten type & spacing ---- */
   @media (max-width: 600px) {
