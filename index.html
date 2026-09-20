@@ -192,6 +192,14 @@
   .rn-field { margin-bottom: 16px; }
   .rn-field label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; }
   .rn-field input { width: 100%; font-family: 'Inter'; font-size: 14.5px; padding: 11px 13px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--cream); color: var(--ink); }
+  .rn-field textarea, .rn-field select { width: 100%; font-family: 'Inter'; font-size: 14.5px; padding: 11px 13px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--cream); color: var(--ink); }
+  .rn-field textarea { min-height: 130px; resize: vertical; line-height: 1.5; }
+  .rn-field textarea:focus, .rn-field select:focus { outline: 2px solid var(--magenta); outline-offset: 1px; border-color: var(--magenta); }
+  .rn-contact-grid { display: grid; grid-template-columns: 1fr 320px; gap: 24px; align-items: start; margin-top: 24px; }
+  .rn-contact-side h3 { margin: 0 0 6px; font-size: 16px; }
+  .rn-contact-side p { margin: 0 0 16px; font-size: 14px; color: var(--ink-soft); line-height: 1.55; }
+  .rn-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  @media (max-width: 800px) { .rn-contact-grid { grid-template-columns: 1fr; } }
   .rn-field input:focus { outline: 2px solid var(--magenta); outline-offset: 1px; border-color: var(--magenta); }
   .rn-confirm-wrap { max-width: 520px; margin: 60px auto; text-align: center; }
   .rn-confirm-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--magenta-tint); color: var(--magenta-dark); display: flex; align-items: center; justify-content: center; margin: 0 auto 22px; }
@@ -589,7 +597,7 @@ const ADVISOR_EXAMPLES = [
   "Just here for a short exchange semester, keep it minimal",
 ];
 const DELIVERY_STEPS = ["Students book", "Rently aggregates demand", "Partner prepares inventory", "One campus delivery", "Hostel blocks receive orders"];
-const VIEW_PATHS = { home: "/", build: "/build", circles: "/circles", storage: "/storage", moves: "/moves", wishlist: "/wishlist", privacy: "/privacy", terms: "/terms" };
+const VIEW_PATHS = { home: "/", build: "/build", circles: "/circles", storage: "/storage", moves: "/moves", wishlist: "/wishlist", privacy: "/privacy", terms: "/terms", contact: "/contact" };
 const PATH_VIEWS = Object.fromEntries(Object.entries(VIEW_PATHS).filter(([v]) => v !== "home").map(([v, p]) => [p, v]));
 const CIRCLES_FEED = [
   { id: "wifi-maintenance", icon: "clipboard", kind: "Announcement", title: "Hostel Wi-Fi maintenance window", meta: "Today \u00b7 9\u201311 PM" },
@@ -1249,6 +1257,14 @@ function App() {
   const [moveBookings, setMoveBookings] = useState([]);
   const [myMoves, setMyMoves] = useState([]);
   const [bagSize, setBagSize] = useState("small");
+  const [contactName, setContactName] = useState(null);
+  const [contactEmail, setContactEmail] = useState(null);
+  const [contactTopic, setContactTopic] = useState("Booking help");
+  const [contactText, setContactText] = useState("");
+  const [contactHp, setContactHp] = useState("");
+  const [contactNote, setContactNote] = useState("");
+  const [contactDone, setContactDone] = useState(false);
+  const [contactMsgs, setContactMsgs] = useState([]);
   const [dropOffDate, setDropOffDate] = useState(() => addDaysISO(30));
   const [pickupDate, setPickupDate] = useState(() => addDaysISO(66));
   const [storageMsg, setStorageMsg] = useState("");
@@ -1347,7 +1363,7 @@ function App() {
         start = addDaysISO(7); end = addDaysISO(7 + len); setSemRolled(true);
       } else setSemRolled(false);
       setSemStart(start); setSemEnd(end);
-      if (profile.role === "admin") { refreshAllBookings(); refreshInventory(); refreshAllStorage(); refreshAllMoves(); refreshAllProfiles(); }
+      if (profile.role === "admin") { refreshAllBookings(); refreshInventory(); refreshAllStorage(); refreshAllMoves(); refreshAllProfiles(); refreshContact(); }
       else if (profile.role === "transporter") { refreshAllBookings(); refreshAllStorage(); refreshAllMoves(); }
       else if (profile.role === "partner") { refreshInventory(); refreshDemand(); refreshManifest(); }
       else { refreshMyBookings(); refreshMyStorage(); refreshMyMoves(); }
@@ -2223,7 +2239,10 @@ function App() {
       qrUrl
         ? h("img", { src: qrUrl, alt: "Pickup QR code", style: { width: 160, height: 160, margin: "0 auto 14px", display: "block", imageRendering: "pixelated" } })
         : h("div", { style: { width: 160, height: 160, margin: "0 auto 14px", background: "var(--cream)", borderRadius: 12 } }),
-      h("div", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 32, letterSpacing: 4 } }, booking.pickup_otp)
+      h("div", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 32, letterSpacing: 4 } }, booking.pickup_otp),
+      h("a", { className: "rn-btn rn-btn-ghost", style: { marginTop: 14, display: "inline-flex", gap: 8, textDecoration: "none" }, target: "_blank", rel: "noopener",
+        href: "https://wa.me/?text=" + encodeURIComponent("Rently booking " + booking.id + "\nPickup code: " + booking.pickup_otp + "\nShow this to the delivery crew on move-in day.\nhttps://rently-site.rently-campus.workers.dev/") },
+        Icon("messageCircle", 16), "Save on WhatsApp")
     );
   }
   function RevealSection(booking) {
@@ -2633,6 +2652,19 @@ function App() {
           )))
         ))
       ),
+      h("div", { className: "rn-admin-section" }, h("h3", null, "Contact messages" + (contactMsgs.filter(m => m.status === "new").length ? " (" + contactMsgs.filter(m => m.status === "new").length + " new)" : "")),
+        contactMsgs.length === 0 ? h("p", { className: "rn-note" }, "No messages yet.") :
+        h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+          h("thead", null, h("tr", null, h("th", null, "Received"), h("th", null, "From"), h("th", null, "Topic"), h("th", null, "Message"), h("th", null, "Status"), h("th", null))),
+          h("tbody", null, contactMsgs.map(m => h("tr", { key: m.id },
+            h("td", null, new Date(m.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })),
+            h("td", null, m.name, h("br"), h("a", { href: "mailto:" + m.email, style: { color: "var(--magenta-dark)" } }, m.email)),
+            h("td", null, m.topic), h("td", { style: { maxWidth: 360, whiteSpace: "pre-wrap" } }, m.message),
+            h("td", null, h("select", { className: "rn-status-select", value: m.status, onChange: e => setContactStatus(m.id, e.target.value) }, ["new", "handled"].map(o => h("option", { key: o, value: o }, o)))),
+            h("td", null, h("button", { className: "rn-btn rn-btn-ghost", onClick: () => deleteContact(m.id) }, "Delete"))
+          )))
+        ))
+      ),
       h("div", { className: "rn-admin-section" }, h("h3", null, "Manage roles"),
         h("p", { className: "rn-note", style: { marginTop: -6 } }, "Promote an account after they've signed up normally, e.g. set a logistics driver to “transporter” or a rental partner contact to “partner”."),
         h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
@@ -2761,6 +2793,70 @@ function App() {
     );
   }
 
+  async function refreshContact() {
+    const { data } = await db.from("contact_messages").select("*").order("created_at", { ascending: false }).limit(100);
+    if (data) setContactMsgs(data);
+  }
+  async function setContactStatus(id, status) {
+    const { error } = await db.from("contact_messages").update({ status }).eq("id", id);
+    if (error) { alert("Couldn't update: " + error.message); return; }
+    refreshContact();
+  }
+  async function deleteContact(id) {
+    if (!confirm("Delete this message?")) return;
+    const { error } = await db.from("contact_messages").delete().eq("id", id);
+    if (error) { alert("Couldn't delete: " + error.message); return; }
+    refreshContact();
+  }
+  async function submitContact(e) {
+    e.preventDefault();
+    if (busy) return;
+    const name = (contactName !== null ? contactName : (profile && profile.full_name) || "").trim();
+    const email = (contactEmail !== null ? contactEmail : (session && session.user && session.user.email) || "").trim();
+    const message = contactText.trim();
+    if (!name) { setContactNote("Add your name so we know who to reply to."); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { setContactNote("Add an email address we can reply to."); return; }
+    if (message.length < 5) { setContactNote("Write a few words so we can help."); return; }
+    if (contactHp) { setContactDone(true); return; }
+    setBusy(true); setContactNote("");
+    const { error } = await db.from("contact_messages").insert({ name: name.slice(0, 100), email: email.slice(0, 200), topic: contactTopic, message: message.slice(0, 2000), student_id: session ? session.user.id : null });
+    setBusy(false);
+    if (error) { setContactNote("Couldn't send your message: " + error.message + ". Please try again in a moment."); return; }
+    setContactDone(true); setContactText("");
+  }
+  function ContactView() {
+    const nameVal = contactName !== null ? contactName : (profile && profile.full_name) || "";
+    const emailVal = contactEmail !== null ? contactEmail : (session && session.user && session.user.email) || "";
+    return h(React.Fragment, null,
+      h("div", { className: "rn-simple-hero" }, h("h1", { className: "rn-display" }, "Contact us"), h("p", null, "Questions about a booking, storage, a move, or working with Rently? Send us a message and we'll reply by email.")),
+      h("div", { className: "rn-contact-grid" },
+        h("div", { className: "rn-acct-card" },
+          contactDone
+            ? h("div", { style: { textAlign: "center", padding: "12px 0" } },
+                h("div", { className: "rn-confirm-icon", style: { margin: "0 auto 14px" } }, Icon("check", 30)),
+                h("h3", { style: { margin: "0 0 6px" } }, "Message sent"),
+                h("p", { style: { margin: "0 0 16px", color: "var(--ink-soft)", fontSize: 14.5 } }, "Thanks. We'll reply to " + (emailVal || "your email") + " as soon as we can."),
+                h("button", { className: "rn-btn rn-btn-ghost", onClick: () => { setContactDone(false); setContactNote(""); } }, "Send another"))
+            : h("form", { onSubmit: submitContact, noValidate: true },
+                h("div", { className: "rn-field" }, h("label", { htmlFor: "ct-name" }, "Your name"), h("input", { id: "ct-name", value: nameVal, maxLength: 100, onChange: e => setContactName(e.target.value), autoComplete: "name" })),
+                h("div", { className: "rn-field" }, h("label", { htmlFor: "ct-email" }, "Email to reply to"), h("input", { id: "ct-email", type: "email", value: emailVal, maxLength: 200, onChange: e => setContactEmail(e.target.value), autoComplete: "email", placeholder: "you@campus.edu" })),
+                h("div", { className: "rn-field" }, h("label", { htmlFor: "ct-topic" }, "What is this about?"), h("select", { id: "ct-topic", value: contactTopic, onChange: e => setContactTopic(e.target.value) }, ["Booking help", "Storage or moves", "Partnership", "Feedback", "Other"].map(t => h("option", { key: t, value: t }, t)))),
+                h("div", { className: "rn-field" }, h("label", { htmlFor: "ct-msg" }, "Message"), h("textarea", { id: "ct-msg", value: contactText, maxLength: 2000, onChange: e => setContactText(e.target.value), placeholder: "Tell us what you need. Include your booking ID if you have one." })),
+                h("div", { className: "rn-hp", "aria-hidden": "true" }, h("label", null, "Leave this empty"), h("input", { tabIndex: -1, autoComplete: "off", value: contactHp, onChange: e => setContactHp(e.target.value) })),
+                contactNote && h("p", { className: "rn-note", role: "alert", style: { color: "var(--magenta-dark)" } }, contactNote),
+                h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: busy, style: { width: "100%", justifyContent: "center" } }, busy ? "Sending\u2026" : "Send message", Icon("arrowRight", 16)))
+        ),
+        h("div", { className: "rn-contact-side" },
+          h("h3", null, "Faster answers"),
+          h("p", null, "Log in and use the Ask Rently chat for instant answers about pricing, storage, moves and your bookings."),
+          h("h3", null, "Booking changes"),
+          h("p", null, "To change or cancel a booking, include the booking ID in your message and we'll confirm what can be done."),
+          h("h3", null, "Working with Rently"),
+          h("p", null, "Supplying stock, hostel partnerships and club collaborations: choose Partnership as the topic.")
+        )
+      )
+    );
+  }
   function LegalView(title, sections) {
     return h(React.Fragment, null,
       h("div", { className: "rn-simple-hero" }, h("h1", { className: "rn-display" }, title), h("p", null, "Last updated " + LAST_UPDATED + ".")),
@@ -2768,7 +2864,8 @@ function App() {
         sections.map(s => h("div", { key: s.h, style: { marginBottom: 18 } },
           h("h3", { style: { margin: "0 0 6px", fontSize: 16 } }, s.h),
           h("p", { style: { margin: 0, fontSize: 14.5, color: "var(--ink-soft)", lineHeight: 1.6 } }, s.p)
-        ))
+        )),
+        h("p", { style: { margin: 0, fontSize: 14.5 } }, "Questions about this page? ", h("a", { href: "/contact", style: { color: "var(--magenta-dark)", fontWeight: 600 }, onClick: e => { e.preventDefault(); goTo("contact"); } }, "Contact us"), ".")
       )
     );
   }
@@ -2832,6 +2929,7 @@ function App() {
   else if (view === "auth") body = AuthForm({});
   else if (view === "privacy") body = PrivacyView();
   else if (view === "terms") body = TermsView();
+  else if (view === "contact") body = ContactView();
 
   return h("div", null,
     Header(),
@@ -2841,6 +2939,7 @@ function App() {
       h("span", null, "Live pilot build \u00b7 backed by a real database \u00b7 built for the Rently pilot"),
       h("div", { style: { display: "flex", gap: 16 } },
         !isStaffAccount && h("a", { href: "/blog/index.html" }, "Blog"),
+        h("a", { href: "/contact", onClick: e => { e.preventDefault(); goTo("contact"); } }, "Contact us"),
         h("a", { href: "/privacy", onClick: e => { e.preventDefault(); goTo("privacy"); } }, "Privacy"),
         h("a", { href: "/terms", onClick: e => { e.preventDefault(); goTo("terms"); } }, "Terms")
       )
