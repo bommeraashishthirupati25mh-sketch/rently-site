@@ -90,7 +90,7 @@
   .rn-kit-price-tag { margin-top: 14px; background: var(--magenta); border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; }
   .rn-kit-price-tag b { color: #fff; font-family: 'Big Shoulders Display'; font-size: 22px; }
   .rn-kit-price-tag span { color: rgba(255,255,255,0.85); font-size: 12.5px; }
-  .rn-semester-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: var(--cream-card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 20px; margin: 20px 0; flex-wrap: wrap; }
+  .rn-semester-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; background: var(--cream-card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 20px; margin: 20px 0; flex-wrap: wrap; }
   .rn-semester-bar b { font-family: 'Big Shoulders Display'; font-size: 15px; }
   .rn-semester-inputs { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .rn-semester-inputs input[type=date] { font-family: 'Inter'; font-size: 13.5px; padding: 8px 10px; border-radius: 8px; border: 1.5px solid var(--line); background: #fff; color: var(--ink); }
@@ -877,6 +877,7 @@ function App() {
   const [semStart, setSemStart] = useState(() => addDaysISO(7));
   const [semEnd, setSemEnd] = useState(() => addDaysISO(7 + SEMESTER_BASELINE_DAYS));
   const [semEditing, setSemEditing] = useState(false);
+  const [semRolled, setSemRolled] = useState(false);
   const [lastBookingId, setLastBookingId] = useState(null);
   const [verifyOtp, setVerifyOtp] = useState({});
   const [verifyOtpMsg, setVerifyOtpMsg] = useState({});
@@ -950,8 +951,13 @@ function App() {
       setStorageRoom(profile.room_info || "");
       setMoveBlock(profile.hostel_block || "");
       setMoveRoom(profile.room_info || "");
-      setSemStart(profile.semester_start || addDaysISO(7));
-      setSemEnd(profile.semester_end || addDaysISO(7 + SEMESTER_BASELINE_DAYS));
+      // Saved dates that have already passed would block booking, so roll them forward: same length, starting a week out.
+      let start = profile.semester_start || addDaysISO(7), end = profile.semester_end || addDaysISO(7 + SEMESTER_BASELINE_DAYS);
+      if (start < todayISO()) {
+        const len = profile.semester_end ? semDurationDays(profile.semester_start, profile.semester_end) : SEMESTER_BASELINE_DAYS;
+        start = addDaysISO(7); end = addDaysISO(7 + len); setSemRolled(true);
+      } else setSemRolled(false);
+      setSemStart(start); setSemEnd(end);
       if (profile.role === "admin") { refreshAllBookings(); refreshInventory(); refreshAllStorage(); refreshAllMoves(); refreshAllProfiles(); }
       else if (profile.role === "transporter") { refreshAllBookings(); refreshAllStorage(); refreshAllMoves(); }
       else if (profile.role === "partner") { refreshInventory(); refreshDemand(); refreshManifest(); }
@@ -1390,7 +1396,7 @@ function App() {
   async function saveSemester() {
     if (semStart < todayISO()) { alert("Semester start can't be in the past."); return; }
     if (semEnd <= semStart) { alert("Semester end needs to be after the start date."); return; }
-    setSemEditing(false);
+    setSemEditing(false); setSemRolled(false);
     if (!session) return;
     const { error } = await db.from("profiles").update({ semester_start: semStart, semester_end: semEnd }).eq("id", session.user.id);
     if (error) alert("Couldn't save your semester dates: " + error.message);
@@ -1400,7 +1406,7 @@ function App() {
     if (!session) { setFormError("Log in or create an account to finish booking."); return; }
     if (!bookName.trim() || !bookBlock || !bookRoom.trim()) { setFormError("Add your name, hostel block and room number to start the booking."); return; }
     if (cartIds.length === 0) { setFormError("Pick at least one item before confirming."); return; }
-    if (semStart < todayISO()) { setFormError("Your semester start date is in the past. Update it in My Rently before booking a delivery."); return; }
+    if (semStart < todayISO()) { setFormError("Your semester start date has passed. Go back to Rent and use Change dates to pick a new one."); return; }
     const outOfStock = cartIds.filter(cid => stockOf(cid) <= 0);
     if (outOfStock.length > 0) { setFormError("Sorry, this just sold out: " + outOfStock.map(cid => ITEM_DEFS[cid] ? ITEM_DEFS[cid].name : cid).join(", ") + ". Remove it to continue."); return; }
     setBusy(true);
@@ -1509,7 +1515,8 @@ function App() {
             h("span", { style: { fontSize: 12.5, color: "var(--ink-faint)" } }, "≈ ", durMonths, " mo · prices scale to this length"),
             h("button", { className: "rn-link-btn", onClick: saveSemester }, "Done")
           )
-        : h("button", { className: "rn-link-btn", onClick: () => setSemEditing(true) }, compact ? "Change dates" : "Moving in on different dates? Change them here")
+        : h("button", { className: "rn-link-btn", onClick: () => setSemEditing(true) }, compact ? "Change dates" : "Moving in on different dates? Change them here"),
+      !semEditing && semRolled && h("div", { style: { flexBasis: "100%", fontSize: 12.5, color: "var(--ink-soft)" } }, "Your saved dates had already passed, so we moved them forward to " + semesterLabel + ". Change them if that isn’t right.")
     );
   }
 
