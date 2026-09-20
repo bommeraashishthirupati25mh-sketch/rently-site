@@ -197,6 +197,9 @@
   .rn-confirm-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--magenta-tint); color: var(--magenta-dark); display: flex; align-items: center; justify-content: center; margin: 0 auto 22px; }
   .rn-confirm-wrap h1 { font-size: 34px; margin: 0 0 10px; }
   .rn-confirm-wrap p { color: var(--ink-soft); margin: 0 0 26px; }
+  /* demo video */
+  .rn-demo { max-width: 860px; margin: 0 auto; border-radius: 20px; overflow: hidden; background: #152E29; box-shadow: 0 18px 40px rgba(21,46,41,0.22); }
+  .rn-demo-video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #152E29; }
   /* shine border */
   .rn-shine-host { position: relative; }
   .rn-shine { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; pointer-events: none; background-size: 300% 300%; padding: var(--border-width, 1px); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; will-change: background-position; animation: rnShine var(--duration, 14s) linear infinite; }
@@ -1967,6 +1970,12 @@ function App() {
         )
       ),
       SemesterBar(false),
+      h("section", { className: "rn-section" },
+        h("div", { className: "rn-section-head" }, h("h2", { className: "rn-display" }, "See Rently in 20 seconds."), h("p", null, "What it is, what is in the bundle, and how a booking works.")),
+        h("div", { className: "rn-demo rn-shine-host" },
+          h("video", { className: "rn-demo-video", src: "/media/demo.mp4", poster: "/media/demo-poster.jpg", controls: true, playsInline: true, preload: "metadata", "aria-label": "Rently demo video" }),
+          h(ShineBorder, { borderWidth: 2, duration: 10, shineColor: ["#D6336C", "#F3A9C4", "#F5F1E7"] }))
+      ),
       h("section", { className: "rn-section" },
         h("div", { className: "rn-section-head" }, h("h2", { className: "rn-display" }, "Rent without the rental anxiety."), h("p", null, "The questions students actually have before they book, answered up front.")),
         h("div", { className: "rn-trust-grid" }, TRUST_POINTS.map(t => h("div", { key: t.title, className: "rn-trust-card" }, ItemIcon(t.icon, 18, "ink"), h("h4", null, t.title), h("p", null, t.desc),
