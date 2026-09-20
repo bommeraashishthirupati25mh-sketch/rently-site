@@ -1357,9 +1357,9 @@ function App() {
   const deliveryBatches = clusterDeliveryDates(activeBookings.map(b => b.semester_start), 3);
 
   const isStaffAccount = profile && (profile.role === "admin" || profile.role === "transporter" || profile.role === "partner");
-  const canPostToCircles = !!session && !(profile && (profile.role === "partner" || profile.role === "transporter"));
+  const canPostToCircles = !!session && !isStaffAccount;
   const mainNav = isStaffAccount
-    ? [{ id: "home", label: "Home" }, { id: "circles", label: "Circles" }]
+    ? [{ id: "home", label: "Home" }]
     : [
         { id: "home", label: "Home" }, { id: "build", label: "Rent" },
         { id: "circles", label: "Circles" }, { id: "storage", label: "Storage" }, { id: "moves", label: "Moves" },
@@ -1398,7 +1398,7 @@ function App() {
         h("button", { className: "rn-logo-btn", type: "button", "aria-label": "Rently home", onClick: () => goTo("home") }, Logo()),
         h("nav", { className: "rn-nav " + (navOpen ? "open" : "") },
           mainNav.map(n => h("button", { key: n.id, className: "rn-nav-btn " + (view === n.id ? "active" : ""), onClick: () => goTo(n.id) }, n.label)),
-          h("a", { className: "rn-nav-btn rn-nav-blog", href: "/blog/index.html" }, "Blog")
+          !isStaffAccount && h("a", { className: "rn-nav-btn rn-nav-blog", href: "/blog/index.html" }, "Blog")
         ),
         h("div", { className: "rn-header-right" }, rightAction),
         h("button", { className: "rn-burger", onClick: () => setNavOpen(v => !v), "aria-label": "Menu" }, Icon(navOpen ? "x" : "menu", 22))
@@ -1462,8 +1462,8 @@ function App() {
       h("section", { className: "rn-section" },
         h("div", { className: "rn-section-head" }, h("h2", { className: "rn-display" }, "The campus, in one feed.")),
         h("div", { className: "rn-teaser-row" },
-          h("div", { className: "rn-teaser-card" }, Icon("users", 22), h("h3", null, "Circles keeps you in the loop between rentals."), h("p", null, "Batch group chats, a buy/sell board and event pages, all tied to your campus and hostel block."), Feed(CIRCLES_FEED), h("div", { style: { marginTop: 14 } }, h("button", { className: "rn-btn rn-btn-ghost", onClick: () => goTo("circles") }, "Open Circles", Icon("chevronRight", 15)))),
-          h("div", { className: "rn-teaser-card" }, Icon("mic", 22), h("h3", null, "Running a college event?"), h("p", null, "Rently Events isn't a full catalog yet. Post what your club needs (speakers, projectors, decor) in Circles and our team coordinates it manually."), h("div", { style: { marginTop: "auto" } }, h("button", { className: "rn-btn rn-btn-ghost", onClick: () => { setNewPostKind("Marketplace"); setNewPostOpen(true); goTo("circles"); } }, "Request event equipment", Icon("chevronRight", 15))))
+          !isStaffAccount && h("div", { className: "rn-teaser-card" }, Icon("users", 22), h("h3", null, "Circles keeps you in the loop between rentals."), h("p", null, "Batch group chats, a buy/sell board and event pages, all tied to your campus and hostel block."), Feed(CIRCLES_FEED), h("div", { style: { marginTop: 14 } }, h("button", { className: "rn-btn rn-btn-ghost", onClick: () => goTo("circles") }, "Open Circles", Icon("chevronRight", 15)))),
+          !isStaffAccount && h("div", { className: "rn-teaser-card" }, Icon("mic", 22), h("h3", null, "Running a college event?"), h("p", null, "Rently Events isn't a full catalog yet. Post what your club needs (speakers, projectors, decor) in Circles and our team coordinates it manually."), h("div", { style: { marginTop: "auto" } }, h("button", { className: "rn-btn rn-btn-ghost", onClick: () => { setNewPostKind("Marketplace"); setNewPostOpen(true); goTo("circles"); } }, "Request event equipment", Icon("chevronRight", 15))))
         )
       ),
       h("section", { className: "rn-section", style: { borderTop: "none", paddingTop: 0 } },
@@ -1756,7 +1756,6 @@ function App() {
         canPostToCircles && h("button", { className: "rn-btn rn-btn-primary", onClick: () => newPostOpen ? cancelPostForm() : setNewPostOpen(true) }, Icon("plus", 16), newPostOpen ? "Cancel" : "New post")
       ),
       !session && h("p", { className: "rn-note" }, "Log in to see and post in Circles."),
-      session && !canPostToCircles && h("p", { className: "rn-note" }, "Partner and transporter accounts can read Circles but don't post or comment. That's for students."),
       canPostToCircles && newPostOpen && h("div", { className: "rn-acct-card", style: { marginBottom: 24 } },
         h("h4", { style: { margin: "0 0 12px" } }, editingPostId ? "Edit post" : "New post"),
         h("form", { onSubmit: submitNewPost },
@@ -2221,7 +2220,7 @@ function App() {
   else if (view === "admin") body = (profile && profile.role === "admin") ? AdminView() : h("div", { className: "rn-loading" }, "Admin access only.");
   else if (view === "transport") body = (profile && profile.role === "transporter") ? TransportView() : h("div", { className: "rn-loading" }, "Transport access only.");
   else if (view === "partner") body = (profile && profile.role === "partner") ? PartnerView() : h("div", { className: "rn-loading" }, "Partner access only.");
-  else if (view === "circles") body = CirclesView();
+  else if (view === "circles") body = staffRole ? h("div", { className: "rn-loading" }, "Circles is for students only. Use your dashboard instead.") : CirclesView();
   else if (view === "storage") body = staffRole ? staffBlocked : StorageView();
   else if (view === "moves") body = staffRole ? staffBlocked : MovesView();
   else if (view === "auth") body = AuthForm({});
@@ -2235,7 +2234,7 @@ function App() {
       Logo(26),
       h("span", null, "Live pilot build \u00b7 backed by a real database \u00b7 built for the Rently pilot"),
       h("div", { style: { display: "flex", gap: 16 } },
-        h("a", { href: "/blog/index.html" }, "Blog"),
+        !isStaffAccount && h("a", { href: "/blog/index.html" }, "Blog"),
         h("a", { href: "/privacy", onClick: e => { e.preventDefault(); goTo("privacy"); } }, "Privacy"),
         h("a", { href: "/terms", onClick: e => { e.preventDefault(); goTo("terms"); } }, "Terms")
       )
