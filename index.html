@@ -197,6 +197,50 @@
   .rn-confirm-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--magenta-tint); color: var(--magenta-dark); display: flex; align-items: center; justify-content: center; margin: 0 auto 22px; }
   .rn-confirm-wrap h1 { font-size: 34px; margin: 0 0 10px; }
   .rn-confirm-wrap p { color: var(--ink-soft); margin: 0 0 26px; }
+  /* wishlist */
+  .rn-heart { border: none; background: transparent; cursor: pointer; padding: 6px; border-radius: 50%; color: var(--ink-faint); line-height: 0; margin-left: auto; align-self: flex-start; flex-shrink: 0; }
+  .rn-heart:hover { background: var(--magenta-tint); color: var(--magenta-dark); }
+  .rn-heart.on { color: var(--magenta); }
+  .rn-wish-btn { position: relative; border: none; background: transparent; cursor: pointer; padding: 8px; border-radius: 50%; color: var(--ink-soft); line-height: 0; }
+  .rn-wish-btn:hover, .rn-wish-btn.active { background: var(--cream-card); color: var(--magenta-dark); }
+  .rn-wish-badge { position: absolute; top: 0; right: 0; background: var(--magenta); color: #fff; font-size: 10.5px; font-weight: 700; min-width: 17px; height: 17px; border-radius: 9px; display: flex; align-items: center; justify-content: center; line-height: 1; }
+  .rn-wish-row { display: flex; align-items: center; gap: 14px; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; flex-wrap: wrap; }
+  .rn-wish-info { flex: 1; min-width: 150px; }
+  .rn-wish-info b { display: block; font-size: 15px; }
+  .rn-wish-info span { font-size: 13px; color: var(--ink-soft); }
+  .rn-wish-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .rn-wish-incart { display: inline-flex; align-items: center; gap: 4px; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); }
+  /* hidden packing game */
+  .rn-game { position: fixed; inset: 0; z-index: 300; background: rgba(9,20,17,0.88); display: flex; align-items: center; justify-content: center; padding: 12px; touch-action: none; animation: rnGameIn 0.25s ease-out; }
+  @keyframes rnGameIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes rnPulse { from { transform: scale(1); } to { transform: scale(1.12); } }
+  .rn-game-card { position: relative; background-color: #173630; background-image: radial-gradient(rgba(245,241,231,0.08) 1.5px, transparent 1.5px); background-size: 22px 22px; border: 4px solid #0C1D19; border-radius: 22px; box-shadow: 0 0 0 3px #FFD23F, 0 24px 60px rgba(0,0,0,0.5); padding: 14px 14px 16px; max-width: 100%; }
+  .rn-game-x { position: absolute; top: 8px; right: 8px; background: #0C1D19; color: #F5F1E7; border: none; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 30; }
+  .rn-game-title { font-family: 'Big Shoulders Display', sans-serif; font-weight: 800; font-size: 38px; line-height: 1; text-align: center; color: #FFD23F; text-shadow: 3px 3px 0 #0C1D19; letter-spacing: 0.02em; margin: 0 0 8px; }
+  .rn-game-hud { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; color: #F5F1E7; font-family: 'Big Shoulders Display', sans-serif; font-weight: 800; }
+  .rn-game-time { font-size: 26px; min-width: 64px; }
+  .rn-game-time.danger { color: #FF5A7E; animation: rnPulse 0.4s infinite alternate; }
+  .rn-game-bar { flex: 1; height: 16px; border-radius: 9px; background: #0C1D19; overflow: hidden; }
+  .rn-game-bar i { display: block; height: 100%; background: repeating-linear-gradient(45deg, #FFD23F 0 10px, #F0A800 10px 20px); }
+  .rn-game-time.danger + .rn-game-bar i { background: repeating-linear-gradient(45deg, #FF5A7E 0 10px, #D6336C 10px 20px); }
+  .rn-game-count { font-size: 26px; min-width: 52px; text-align: right; }
+  .rn-game-arena { position: relative; overflow: hidden; background: rgba(12,29,25,0.55); border-radius: 14px; border: 2px dashed rgba(245,241,231,0.25); touch-action: none; user-select: none; -webkit-user-select: none; }
+  .rn-game-tile { position: absolute; left: 0; top: 0; border-radius: 16px; background: #F5F1E7; color: #152E29; border: 3px solid #0C1D19; box-shadow: 0 4px 0 #0C1D19; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; cursor: grab; touch-action: none; font: 700 10px Inter, sans-serif; text-align: center; line-height: 1.05; padding: 3px; }
+  .rn-game-tile:active { cursor: grabbing; box-shadow: 0 8px 0 #0C1D19; }
+  .rn-game-tile:focus-visible { outline: 3px solid #FFD23F; }
+  .rn-game-tile.packed { opacity: 0; pointer-events: none; transition: transform 0.22s ease-in, opacity 0.25s 0.05s; }
+  .rn-game-suit { position: absolute; pointer-events: none; transition: transform 0.12s; }
+  .rn-game-suit.hot { transform: scale(1.1) rotate(-2deg); filter: drop-shadow(0 0 14px #FFD23F); }
+  .rn-game-overlay { position: absolute; inset: 0; background: rgba(12,29,25,0.88); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; color: #F5F1E7; z-index: 20; gap: 8px; }
+  .rn-game-overlay p { margin: 0; font-size: 14px; color: rgba(245,241,231,0.8); max-width: 300px; }
+  .rn-game-big { font-family: 'Big Shoulders Display', sans-serif; font-weight: 800; font-size: 44px; line-height: 1; color: #FFD23F; text-shadow: 3px 3px 0 #0C1D19; }
+  .rn-game-score { font-family: 'Big Shoulders Display', sans-serif; font-weight: 800; font-size: 72px; line-height: 1; color: #F5F1E7; }
+  .rn-game-best { font-size: 12.5px !important; color: rgba(245,241,231,0.6) !important; }
+  .rn-game-actions { display: flex; gap: 12px; margin-top: 6px; }
+  .rn-game-btn { font-family: 'Big Shoulders Display', sans-serif; font-weight: 800; font-size: 28px; color: #0C1D19; background: linear-gradient(#FFE27A, #FFD23F); border: 3px solid #0C1D19; border-radius: 14px; padding: 6px 26px; box-shadow: 0 5px 0 #0C1D19; cursor: pointer; margin-top: 6px; }
+  .rn-game-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #0C1D19; }
+  .rn-game-btn.alt { background: #F5F1E7; }
+  @media (prefers-reduced-motion: reduce) { .rn-game, .rn-game *, .rn-game-time.danger { animation: none !important; transition: none !important; } }
   .rn-reveal-section { margin: 34px 0 30px; text-align: center; }
   .rn-reveal-section h3 { font-family: 'Big Shoulders Display', 'Inter', sans-serif; font-weight: 800; font-size: 26px; margin: 0 0 4px; }
   .rn-reveal-section > p { margin: 0 0 18px; font-size: 14px; }
@@ -506,7 +550,7 @@ const ADVISOR_EXAMPLES = [
   "Just here for a short exchange semester, keep it minimal",
 ];
 const DELIVERY_STEPS = ["Students book", "Rently aggregates demand", "Partner prepares inventory", "One campus delivery", "Hostel blocks receive orders"];
-const VIEW_PATHS = { home: "/", build: "/build", circles: "/circles", storage: "/storage", moves: "/moves", privacy: "/privacy", terms: "/terms" };
+const VIEW_PATHS = { home: "/", build: "/build", circles: "/circles", storage: "/storage", moves: "/moves", wishlist: "/wishlist", privacy: "/privacy", terms: "/terms" };
 const PATH_VIEWS = Object.fromEntries(Object.entries(VIEW_PATHS).filter(([v]) => v !== "home").map(([v, p]) => [p, v]));
 const CIRCLES_FEED = [
   { id: "wifi-maintenance", icon: "clipboard", kind: "Announcement", title: "Hostel Wi-Fi maintenance window", meta: "Today \u00b7 9\u201311 PM" },
@@ -674,6 +718,138 @@ function RoomRevealCard(props) {
     )
   );
 }
+// ---- Wishlist: items saved for later, kept per account in localStorage (guest list merges on login) ----
+function wishKey(uid) { return "rently_wishlist_" + (uid || "guest"); }
+function readWish(uid) { try { const v = JSON.parse(localStorage.getItem(wishKey(uid)) || "[]"); return Array.isArray(v) ? v.filter(function (i) { return ITEM_DEFS[i]; }) : []; } catch (e) { return []; } }
+function writeWish(uid, ids) { try { localStorage.setItem(wishKey(uid), JSON.stringify(ids)); } catch (e) {} }
+function HeartIcon(filled, size) {
+  return h("svg", { width: size || 18, height: size || 18, viewBox: "0 0 24 24", fill: filled ? "currentColor" : "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" },
+    h("path", { d: "M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21.2l7.8-7.7 1-1.1a5.5 5.5 0 0 0 0-7.8z" }));
+}
+
+// ---- Hidden easter egg: tap the logo 3 times for a 10-second packing game. Not connected to anything real. ----
+function readPackBest() { try { return JSON.parse(localStorage.getItem("rently_pack_best") || "null"); } catch (e) { return null; } }
+function packVerdict(n, total) {
+  if (n >= total) return ["PACKED. LEGEND.", "The warden is impressed. Nobody has ever seen this."];
+  if (n >= total - 2) return ["SO CLOSE", "One more charger and you had it."];
+  if (n >= 3) return ["BOLD STRATEGY", "You will be buying the rest again next semester."];
+  return ["EMPTY SUITCASE", "Have you met a suitcase before?"];
+}
+function PackingGame(props) {
+  const ids = Object.keys(ITEM_DEFS), total = ids.length;
+  const [phase, setPhase] = useState("ready");
+  const [items, setItems] = useState([]);
+  const [left, setLeft] = useState(10);
+  const [hot, setHot] = useState(false);
+  const [result, setResult] = useState(null);
+  const [best, setBest] = useState(readPackBest());
+  const arenaRef = useRef(null), itemsRef = useRef([]), drag = useRef(null), startRef = useRef(0), zRef = useRef(1);
+  const AW = Math.min(window.innerWidth - 40, 520), AH = Math.max(380, Math.min(window.innerHeight - 210, 600)), TILE = 66, SW = 170, SH = 116;
+  const suit = { x: (AW - SW) / 2, y: AH - SH - 6, w: SW, h: SH };
+
+  function layout() {
+    const cols = 4, rows = 2, x0 = 8, x1 = AW - TILE - 8, y0 = 38, y1 = suit.y - TILE - 60;
+    const cells = []; for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) cells.push([r, c]);
+    for (let i = cells.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = cells[i]; cells[i] = cells[j]; cells[j] = t; }
+    return ids.map(function (id, i) {
+      const cell = cells[i], cw = (x1 - x0) / (cols - 1), ch = (y1 - y0) / (rows - 1);
+      return { id: id, x: Math.round(x0 + cell[1] * cw + (Math.random() - 0.5) * 12), y: Math.round(y0 + cell[0] * ch + (Math.random() - 0.5) * 14), packed: false, z: 1 };
+    });
+  }
+  function start() { const it = layout(); itemsRef.current = it; setItems(it); setLeft(10); setResult(null); setHot(false); startRef.current = performance.now(); setPhase("play"); }
+  function finish(list) {
+    const packed = list.filter(function (i) { return i.packed; }).length;
+    const time = Math.min(10, (performance.now() - startRef.current) / 1000);
+    const r = { packed: packed, time: time };
+    drag.current = null; setHot(false); setResult(r); setPhase("done");
+    const b = readPackBest();
+    if (!b || packed > b.packed || (packed === b.packed && packed > 0 && time < b.time)) { try { localStorage.setItem("rently_pack_best", JSON.stringify(r)); } catch (e) {} setBest(r); }
+  }
+  useEffect(function () {
+    if (phase !== "play") return;
+    const t = setInterval(function () { const l = Math.max(0, 10 - (performance.now() - startRef.current) / 1000); setLeft(l); if (l <= 0) finish(itemsRef.current); }, 50);
+    return function () { clearInterval(t); };
+  }, [phase]);
+  useEffect(function () {
+    const prev = document.body.style.overflow; document.body.style.overflow = "hidden";
+    const onKey = function (e) { if (e.key === "Escape") props.onClose(); };
+    window.addEventListener("keydown", onKey);
+    return function () { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
+  }, []);
+
+  function pack(id) {
+    if (phase !== "play") return;
+    const next = itemsRef.current.map(function (i) { return i.id === id ? Object.assign({}, i, { packed: true, x: suit.x + SW / 2 - TILE / 2, y: suit.y + 16 }) : i; });
+    itemsRef.current = next; setItems(next);
+    if (next.every(function (i) { return i.packed; })) finish(next);
+  }
+  function overSuit(it) { const cx = it.x + TILE / 2, cy = it.y + TILE / 2; return cx > suit.x - 8 && cx < suit.x + suit.w + 8 && cy > suit.y - 24 && cy < suit.y + suit.h + 8; }
+  function down(e, it) {
+    if (phase !== "play" || it.packed) return;
+    e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (x) {}
+    const rect = arenaRef.current.getBoundingClientRect();
+    zRef.current += 1;
+    drag.current = { id: it.id, ox: e.clientX - rect.left - it.x, oy: e.clientY - rect.top - it.y };
+    itemsRef.current = itemsRef.current.map(function (i) { return i.id === it.id ? Object.assign({}, i, { z: zRef.current }) : i; }); setItems(itemsRef.current);
+  }
+  function move(e) {
+    const d = drag.current; if (!d) return;
+    const rect = arenaRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(AW - TILE, e.clientX - rect.left - d.ox)), y = Math.max(0, Math.min(AH - TILE, e.clientY - rect.top - d.oy));
+    let moved = null;
+    itemsRef.current = itemsRef.current.map(function (i) { if (i.id !== d.id) return i; moved = Object.assign({}, i, { x: x, y: y }); return moved; });
+    setItems(itemsRef.current); setHot(overSuit(moved));
+  }
+  function up() {
+    const d = drag.current; if (!d) return; drag.current = null; setHot(false);
+    const it = itemsRef.current.find(function (i) { return i.id === d.id; });
+    if (it && overSuit(it)) pack(d.id);
+  }
+
+  const packedN = items.filter(function (i) { return i.packed; }).length;
+  const verdict = result ? packVerdict(result.packed, total) : null;
+  const suitcase = h("svg", { className: "rn-game-suit" + (hot ? " hot" : ""), style: { left: suit.x, top: suit.y }, width: SW, height: SH, viewBox: "0 0 170 116", "aria-hidden": "true" },
+    h("path", { d: "M58 26V16a8 8 0 0 1 8-8h38a8 8 0 0 1 8 8v10", fill: "none", stroke: "#0C1D19", strokeWidth: 7, strokeLinecap: "round" }),
+    h("rect", { x: 4, y: 24, width: 162, height: 86, rx: 16, fill: "#D6336C", stroke: "#0C1D19", strokeWidth: 4 }),
+    h("rect", { x: 6, y: 26, width: 158, height: 20, rx: 14, fill: "#AF1F52" }),
+    h("rect", { x: 30, y: 26, width: 12, height: 82, fill: "#0C1D19", opacity: 0.28 }),
+    h("rect", { x: 128, y: 26, width: 12, height: 82, fill: "#0C1D19", opacity: 0.28 }),
+    h("rect", { x: 76, y: 50, width: 18, height: 14, rx: 3, fill: "#FFD23F", stroke: "#0C1D19", strokeWidth: 3 }),
+    h("text", { x: 85, y: 96, textAnchor: "middle", fontFamily: "Big Shoulders Display, sans-serif", fontWeight: 800, fontSize: 30, fill: "#F5F1E7" }, packedN + "/" + total));
+
+  return h("div", { className: "rn-game", role: "dialog", "aria-modal": "true", "aria-label": "Packing game", onClick: props.onClose },
+    h("div", { className: "rn-game-card", onClick: function (e) { e.stopPropagation(); } },
+      h("button", { className: "rn-game-x", onClick: props.onClose, "aria-label": "Close game" }, Icon("x", 18)),
+      h("div", { className: "rn-game-title" }, "PACK IT!"),
+      h("div", { className: "rn-game-hud" },
+        h("div", { className: "rn-game-time" + (phase === "play" && left <= 3 ? " danger" : "") }, left.toFixed(1) + "s"),
+        h("div", { className: "rn-game-bar" }, h("i", { style: { width: (left * 10) + "%" } })),
+        h("div", { className: "rn-game-count" }, packedN + "/" + total)),
+      h("div", { className: "rn-game-arena", ref: arenaRef, style: { width: AW, height: AH } },
+        items.map(function (it) {
+          const def = ITEM_DEFS[it.id];
+          return h("div", { key: it.id, className: "rn-game-tile" + (it.packed ? " packed" : ""), style: { transform: "translate(" + it.x + "px," + it.y + "px)", width: TILE, height: TILE, zIndex: it.z }, role: "button", tabIndex: it.packed ? -1 : 0, "aria-label": "Pack " + def.name,
+            onPointerDown: function (e) { down(e, it); }, onPointerMove: move, onPointerUp: up, onPointerCancel: up,
+            onKeyDown: function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pack(it.id); } } },
+            Icon(def.icon, 24), h("span", null, def.name));
+        }),
+        suitcase,
+        phase === "ready" && h("div", { className: "rn-game-overlay" },
+          h("div", { className: "rn-game-big" }, "10 SECONDS."),
+          h("p", null, "Drag everything into the suitcase before the timer runs out."),
+          h("button", { className: "rn-game-btn", onClick: start }, "START"),
+          best && h("p", { className: "rn-game-best" }, "Your best: " + best.packed + "/" + total + " in " + best.time.toFixed(1) + "s")),
+        phase === "done" && verdict && h("div", { className: "rn-game-overlay" },
+          h("div", { className: "rn-game-big" }, verdict[0]),
+          h("div", { className: "rn-game-score" }, result.packed + "/" + total),
+          h("p", null, verdict[1]),
+          h("p", { className: "rn-game-best" }, result.packed + " packed in " + result.time.toFixed(1) + "s" + (best ? "  |  Best " + best.packed + "/" + total + " in " + best.time.toFixed(1) + "s" : "")),
+          h("div", { className: "rn-game-actions" }, h("button", { className: "rn-game-btn", onClick: start }, "AGAIN"), h("button", { className: "rn-game-btn alt", onClick: props.onClose }, "CLOSE")))
+      )
+    )
+  );
+}
 function money(n) { return "\u20b9" + Number(n).toLocaleString("en-IN"); }
 function dateToISO(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
 function todayISO() { return dateToISO(new Date()); }
@@ -818,6 +994,15 @@ function App() {
   });
   const [navOpen, setNavOpen] = useState(false);
   const [cartIds, setCartIds] = useState([]);
+  const [wishlist, setWishlist] = useState([]);
+  const [gameOpen, setGameOpen] = useState(false);
+  const logoTaps = useRef({ n: 0, last: 0 });
+  const wishUid = session ? session.user.id : null;
+  useEffect(() => {
+    let ids = readWish(wishUid);
+    if (wishUid) { const g = readWish(null); if (g.length) { ids = ids.concat(g.filter(i => !ids.includes(i))); writeWish(wishUid, ids); writeWish(null, []); } }
+    setWishlist(ids);
+  }, [wishUid]);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
@@ -1228,7 +1413,8 @@ function App() {
             toggleItem(id);
             setProductDetail(null);
             if (productDetailSource === "home" && !wasSelected) goTo("booking");
-          } }, selected ? "Remove from my room" : "Add to my room", Icon(selected ? "check" : "arrowRight", 16))
+          } }, selected ? "Remove from my room" : "Add to my room", Icon(selected ? "check" : "arrowRight", 16)),
+          h("button", { className: "rn-btn rn-btn-ghost", style: { width: "100%", justifyContent: "center", marginTop: 10 }, "aria-pressed": wishlist.includes(id), onClick: () => toggleWish(id) }, HeartIcon(wishlist.includes(id), 16), wishlist.includes(id) ? "Saved to wishlist" : "Save for later")
         )
       )
     );
@@ -1256,6 +1442,16 @@ function App() {
       return [...prev, id];
     });
   }
+  function toggleWish(id) {
+    setWishlist(prev => { const next = prev.includes(id) ? prev.filter(x => x !== id) : prev.concat([id]); writeWish(wishUid, next); return next; });
+  }
+  function removeFromWish(id) { setWishlist(prev => { const next = prev.filter(x => x !== id); writeWish(wishUid, next); return next; }); }
+  function moveToCart(id) {
+    if (stockOf(id) <= 0) return;
+    setCartIds(prev => prev.includes(id) ? prev : prev.concat([id]));
+    removeFromWish(id);
+  }
+  function moveAllToCart() { wishlist.forEach(id => { if (stockOf(id) > 0 && !cartIds.includes(id)) moveToCart(id); }); }
   function openProductDetail(id, source) { setProductDetail(id); setProductImgIndex(0); setProductDetailSource(source || null); }
   function displayName() {
     if (profile && profile.full_name && profile.full_name.trim()) return profile.full_name.trim();
@@ -1534,12 +1730,18 @@ function App() {
         : h("button", { className: "rn-my-rently", onClick: () => { setAuthMode("login"); goTo("auth"); } }, "Log in");
     return h("header", { className: "rn-header" },
       h("div", { className: "rn-header-inner" },
-        h("button", { className: "rn-logo-btn", type: "button", "aria-label": "Rently home", onClick: () => goTo("home") }, Logo()),
+        h("button", { className: "rn-logo-btn", type: "button", "aria-label": "Rently home", onClick: () => {
+          const now = Date.now(), t = logoTaps.current;
+          t.n = (now - t.last < 1000 ? t.n : 0) + 1; t.last = now;
+          if (t.n >= 3) { t.n = 0; setGameOpen(true); } else goTo("home");
+        } }, Logo()),
         h("nav", { className: "rn-nav " + (navOpen ? "open" : "") },
           mainNav.map(n => h("button", { key: n.id, className: "rn-nav-btn " + (view === n.id ? "active" : ""), onClick: () => goTo(n.id) }, n.label)),
           !isStaffAccount && h("a", { className: "rn-nav-btn rn-nav-blog", href: "/blog/index.html" }, "Blog")
         ),
-        h("div", { className: "rn-header-right" }, rightAction),
+        h("div", { className: "rn-header-right" },
+          !isStaffAccount && h("button", { className: "rn-wish-btn" + (view === "wishlist" ? " active" : ""), onClick: () => goTo("wishlist"), "aria-label": "Wishlist" + (wishlist.length ? " (" + wishlist.length + " saved)" : "") }, HeartIcon(wishlist.length > 0, 20), wishlist.length > 0 && h("span", { className: "rn-wish-badge" }, wishlist.length)),
+          rightAction),
         h("button", { className: "rn-burger", onClick: () => setNavOpen(v => !v), "aria-label": "Menu" }, Icon(navOpen ? "x" : "menu", 22))
       )
     );
@@ -1638,6 +1840,43 @@ function App() {
       )
     );
   }
+  function WishlistView() {
+    const items = wishlist.filter(id => ITEM_DEFS[id]);
+    const movable = items.filter(id => stockOf(id) > 0 && !cartIds.includes(id));
+    const movableTotal = roundMoney(movable.reduce((sum, id) => sum + priceOf(id), 0) * semScale);
+    return h(React.Fragment, null,
+      h("div", { className: "rn-page-head" }, h("h1", { className: "rn-display" }, "Your wishlist"), h("p", null, "Things you saved for later. Move them to your cart when you are ready to book.")),
+      items.length === 0
+        ? h("div", { className: "rn-empty" }, HeartIcon(false, 34), h("p", null, cartIds.length > 0 ? "Everything you saved is in your cart." : "Nothing saved yet. Tap the heart on any item to keep it for later."),
+            h("div", { style: { display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" } },
+              cartIds.length > 0 && h("button", { className: "rn-btn rn-btn-primary", onClick: () => goTo("booking") }, "Go to checkout (" + cartIds.length + (cartIds.length === 1 ? " item" : " items") + ")", Icon("arrowRight", 16)),
+              h("button", { className: cartIds.length > 0 ? "rn-btn rn-btn-ghost" : "rn-btn rn-btn-primary", onClick: () => goTo("build") }, "Browse items")))
+        : h("div", { className: "rn-build-grid" },
+            h("div", null, items.map(id => {
+              const inCart = cartIds.includes(id), out = stockOf(id) <= 0;
+              return h("div", { key: id, className: "rn-wish-row" },
+                ItemVisual(id, 26, ITEM_DEFS[id].icon, { clickable: true }),
+                h("div", { className: "rn-wish-info" }, h("b", null, ITEM_DEFS[id].name), h("span", null, money(scaledPriceOf(id)), "/sem", out && !inCart ? " \u00b7 Out of stock" : "")),
+                h("div", { className: "rn-wish-actions" },
+                  inCart
+                    ? h("span", { className: "rn-wish-incart" }, Icon("check", 15), " In cart")
+                    : h("button", { className: "rn-btn rn-btn-primary", style: { padding: "9px 16px" }, disabled: out, onClick: () => moveToCart(id) }, "Move to cart"),
+                  h("button", { className: "rn-link-btn", onClick: () => removeFromWish(id) }, "Remove"))
+              );
+            })),
+            h("div", { className: "rn-summary-card" },
+              h("h3", { style: { fontSize: 17, margin: "0 0 14px" } }, "Ready to book?"),
+              h("div", { className: "rn-summary-row" }, h("span", null, "Saved items"), h("span", null, items.length)),
+              h("div", { className: "rn-summary-row" }, h("span", null, "In your cart"), h("span", null, cartIds.length)),
+              movable.length > 0 && h("div", { className: "rn-summary-total" }, h("span", null, "Available to add"), h("b", null, money(movableTotal))),
+              h("button", { className: "rn-btn rn-btn-ghost", style: { width: "100%", justifyContent: "center", marginTop: 14 }, disabled: movable.length === 0, onClick: moveAllToCart }, "Move all to cart"),
+              h("button", { className: "rn-btn rn-btn-primary", style: { width: "100%", justifyContent: "center", marginTop: 10 }, disabled: cartIds.length === 0, onClick: () => goTo("booking") }, "Go to checkout", Icon("arrowRight", 16)),
+              h("button", { className: "rn-link-btn", style: { marginTop: 10 }, onClick: () => goTo("build") }, "Keep browsing")
+            )
+          )
+    );
+  }
+
   function BuildView() {
     return h(React.Fragment, null,
       h("div", { className: "rn-page-head" }, h("h1", { className: "rn-display" }, "Build your room"), h("p", null, "Pick what your room actually needs, category by category. Your price updates as you go.")),
@@ -1658,7 +1897,8 @@ function App() {
                 h("span", { className: "rn-chip-price" }, money(scaledPriceOf(id)), "/sem", outOfStock ? h("span", { className: "rn-chip-low" }, " \u00b7 Out of stock") : stock < LOW_STOCK && h("span", { className: "rn-chip-low" }, " \u00b7 ", stock, " left")),
                 h("span", { style: { display: "block", fontSize: 11.5, color: "var(--ink-faint)", marginTop: 2, maxWidth: 220 } }, ITEM_DEFS[id].blurb),
                 h("button", { className: "rn-link-btn", style: { fontSize: 11.5, marginTop: 4 }, onClick: e => { e.stopPropagation(); openProductDetail(id); } }, "View details")
-              )
+              ),
+              h("button", { className: "rn-heart" + (wishlist.includes(id) ? " on" : ""), "aria-pressed": wishlist.includes(id), "aria-label": (wishlist.includes(id) ? "Remove " : "Save ") + ITEM_DEFS[id].name + (wishlist.includes(id) ? " from wishlist" : " for later"), onClick: e => { e.stopPropagation(); toggleWish(id); }, onKeyDown: e => e.stopPropagation() }, HeartIcon(wishlist.includes(id), 18))
             );
           }))
         ))),
@@ -2370,6 +2610,7 @@ function App() {
   else if (view === "admin") body = (profile && profile.role === "admin") ? AdminView() : h("div", { className: "rn-loading" }, "Admin access only.");
   else if (view === "transport") body = (profile && profile.role === "transporter") ? TransportView() : h("div", { className: "rn-loading" }, "Transport access only.");
   else if (view === "partner") body = (profile && profile.role === "partner") ? PartnerView() : h("div", { className: "rn-loading" }, "Partner access only.");
+  else if (view === "wishlist") body = staffRole ? staffBlocked : WishlistView();
   else if (view === "circles") body = staffRole ? h("div", { className: "rn-loading" }, "Circles is for students only. Use your dashboard instead.") : CirclesView();
   else if (view === "storage") body = staffRole ? staffBlocked : StorageView();
   else if (view === "moves") body = staffRole ? staffBlocked : MovesView();
@@ -2390,6 +2631,7 @@ function App() {
       )
     ),
     PolicyModal(policyOpen, () => setPolicyOpen(false)),
+    gameOpen && h(PackingGame, { onClose: () => setGameOpen(false) }),
     ProductDetailModal(),
     ImageLightbox(lightboxImage, () => setLightboxImage(null)),
     ChatWidget()
