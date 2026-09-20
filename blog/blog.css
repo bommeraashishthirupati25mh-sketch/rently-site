@@ -29,6 +29,8 @@ a { color: var(--magenta-dark); }
 @media (prefers-reduced-motion: reduce) { .rn-nav-link { transition: none; } }
 .rn-cta { background: var(--magenta); color: #fff; border: none; font-family: 'Inter'; font-weight: 700; font-size: 13.5px; padding: 9px 16px; border-radius: 999px; cursor: pointer; text-decoration: none; display: inline-block; }
 .rn-cta:hover { background: var(--magenta-dark); }
+.rn-header nav .rn-cta { margin-left: 22px; }
+@media (max-width: 640px) { .rn-header nav .rn-cta { margin-left: 10px; } }
 
 /* layout */
 .rn-wrap { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
