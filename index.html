@@ -211,10 +211,10 @@
   .rn-wish-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .rn-wish-incart { display: inline-flex; align-items: center; gap: 4px; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); }
   /* hidden packing game */
-  .rn-game { position: fixed; inset: 0; z-index: 300; background: rgba(9,20,17,0.88); display: flex; align-items: center; justify-content: center; padding: 12px; touch-action: none; animation: rnGameIn 0.25s ease-out; }
+  .rn-game { position: fixed; inset: 0; z-index: 300; background: rgba(9,20,17,0.88); display: flex; padding: 12px; overflow-y: auto; animation: rnGameIn 0.25s ease-out; }
   @keyframes rnGameIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes rnPulse { from { transform: scale(1); } to { transform: scale(1.12); } }
-  .rn-game-card { position: relative; background-color: #173630; background-image: radial-gradient(rgba(245,241,231,0.08) 1.5px, transparent 1.5px); background-size: 22px 22px; border: 4px solid #0C1D19; border-radius: 22px; box-shadow: 0 0 0 3px #FFD23F, 0 24px 60px rgba(0,0,0,0.5); padding: 14px 14px 16px; max-width: 100%; }
+  .rn-game-card { margin: auto; position: relative; background-color: #173630; background-image: radial-gradient(rgba(245,241,231,0.08) 1.5px, transparent 1.5px); background-size: 22px 22px; border: 4px solid #0C1D19; border-radius: 22px; box-shadow: 0 0 0 3px #FFD23F, 0 24px 60px rgba(0,0,0,0.5); padding: 14px 14px 16px; max-width: 100%; }
   .rn-game-x { position: absolute; top: 8px; right: 8px; background: #0C1D19; color: #F5F1E7; border: none; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 30; }
   .rn-game-title { font-family: 'Big Shoulders Display', sans-serif; font-weight: 800; font-size: 38px; line-height: 1; text-align: center; color: #FFD23F; text-shadow: 3px 3px 0 #0C1D19; letter-spacing: 0.02em; margin: 0 0 8px; }
   .rn-game-hud { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; color: #F5F1E7; font-family: 'Big Shoulders Display', sans-serif; font-weight: 800; }
@@ -744,11 +744,20 @@ function PackingGame(props) {
   const [result, setResult] = useState(null);
   const [best, setBest] = useState(readPackBest());
   const arenaRef = useRef(null), itemsRef = useRef([]), drag = useRef(null), startRef = useRef(0), zRef = useRef(1);
-  const AW = Math.min(window.innerWidth - 40, 520), AH = Math.max(380, Math.min(window.innerHeight - 210, 600)), TILE = 66, SW = 170, SH = 116;
+  const [vp, setVp] = useState({ w: window.innerWidth, h: window.innerHeight });
+  useEffect(function () { const f = function () { setVp({ w: window.innerWidth, h: window.innerHeight }); }; window.addEventListener("resize", f); return function () { window.removeEventListener("resize", f); }; }, []);
+  // card chrome = 4px border + 14px padding each side (36) plus 12px overlay padding each side (24); 165 covers title, timer row and the same on top and bottom
+  const AW = Math.max(240, Math.min(vp.w - 60, 520)), AH = Math.max(300, Math.min(vp.h - 165, 600)), TILE = 66, SW = 170, SH = 116;
   const suit = { x: (AW - SW) / 2, y: AH - SH - 6, w: SW, h: SH };
 
+  useEffect(function () {
+    if (!itemsRef.current.length) return;
+    itemsRef.current = itemsRef.current.map(function (i) { return Object.assign({}, i, { x: Math.max(0, Math.min(AW - TILE, i.x)), y: Math.max(0, Math.min(AH - TILE, i.y)) }); });
+    setItems(itemsRef.current);
+  }, [AW, AH]);
+
   function layout() {
-    const cols = 4, rows = 2, x0 = 8, x1 = AW - TILE - 8, y0 = 38, y1 = suit.y - TILE - 60;
+    const cols = AW < 420 ? 3 : 4, rows = Math.ceil(total / cols) + (AH > 500 ? 1 : 0), x0 = 8, x1 = AW - TILE - 8, y0 = 38, y1 = suit.y - TILE - 60;
     const cells = []; for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) cells.push([r, c]);
     for (let i = cells.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = cells[i]; cells[i] = cells[j]; cells[j] = t; }
     return ids.map(function (id, i) {
