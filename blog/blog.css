@@ -19,6 +19,14 @@ a { color: var(--magenta-dark); }
 .rn-nav-link { font-family: 'Inter'; font-weight: 600; font-size: 14.5px; color: var(--ink-soft); text-decoration: none; padding: 9px 13px; border-radius: 999px; }
 .rn-nav-link:hover { background: var(--cream-card); color: var(--ink); }
 .rn-nav-link.active { background: var(--ink); color: var(--cream); }
+/* Sibling focus: dim the other nav links while one is hovered or keyboard-focused. gap is 0 so hover isn't lost between items. */
+.rn-header nav { gap: 0 !important; }
+.rn-nav-link { transition: opacity 0.2s ease-out, background 0.15s, color 0.15s; }
+@media (hover: hover) {
+  .rn-header nav:has(> .rn-nav-link:hover) > .rn-nav-link:not(:hover) { opacity: 0.3; }
+}
+.rn-header nav:has(> .rn-nav-link:focus-visible) > .rn-nav-link:not(:focus-visible) { opacity: 0.3; }
+@media (prefers-reduced-motion: reduce) { .rn-nav-link { transition: none; } }
 .rn-cta { background: var(--magenta); color: #fff; border: none; font-family: 'Inter'; font-weight: 700; font-size: 13.5px; padding: 9px 16px; border-radius: 999px; cursor: pointer; text-decoration: none; display: inline-block; }
 .rn-cta:hover { background: var(--magenta-dark); }
 

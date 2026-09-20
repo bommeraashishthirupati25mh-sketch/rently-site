@@ -47,6 +47,14 @@
   .rn-nav-btn.active { background: var(--ink); color: var(--cream); }
   .rn-nav-blog { margin-left: 10px; padding-left: 17px; border-left: 1.5px solid var(--line); color: var(--magenta-dark); }
   .rn-nav-blog:hover { background: var(--magenta-tint); color: var(--magenta-dark); }
+  /* Sibling focus: dim the other nav items while one is hovered or keyboard-focused. gap is 0 so hover isn't lost between items. */
+  .rn-nav { gap: 0; }
+  .rn-nav-btn { transition: opacity 0.2s ease-out, background 0.15s, color 0.15s; }
+  @media (hover: hover) {
+    .rn-nav:has(> .rn-nav-btn:hover) > .rn-nav-btn:not(:hover) { opacity: 0.3; }
+  }
+  .rn-nav:has(> .rn-nav-btn:focus-visible) > .rn-nav-btn:not(:focus-visible) { opacity: 0.3; }
+  @media (prefers-reduced-motion: reduce) { .rn-nav-btn { transition: none; } }
   .rn-header-right { display: flex; align-items: center; gap: 10px; }
   .rn-my-rently { background: var(--magenta); color: #fff; border: none; font-family: 'Inter'; font-weight: 700; font-size: 13.5px; padding: 9px 16px; border-radius: 999px; cursor: pointer; }
   .rn-my-rently:hover { background: var(--magenta-dark); }
