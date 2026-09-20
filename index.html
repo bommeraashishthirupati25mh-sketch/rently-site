@@ -197,6 +197,12 @@
   .rn-confirm-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--magenta-tint); color: var(--magenta-dark); display: flex; align-items: center; justify-content: center; margin: 0 auto 22px; }
   .rn-confirm-wrap h1 { font-size: 34px; margin: 0 0 10px; }
   .rn-confirm-wrap p { color: var(--ink-soft); margin: 0 0 26px; }
+  .rn-reveal-section { margin: 34px 0 30px; }
+  .rn-reveal-section h3 { font-family: 'Big Shoulders Display', 'Inter', sans-serif; font-weight: 800; font-size: 26px; margin: 0 0 4px; }
+  .rn-reveal-section > p { margin: 0 0 18px; font-size: 14px; }
+  .rn-reveal-canvas { display: block; width: 100%; max-width: 300px; aspect-ratio: 9 / 16; height: auto; margin: 0 auto; border-radius: 22px; box-shadow: 0 18px 40px rgba(21,46,41,0.28); background: #173630; }
+  .rn-reveal-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
+  .rn-reveal-actions .rn-btn { justify-content: center; }
   .rn-receipt { border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; text-align: left; background: #fff; margin-bottom: 26px; }
   .rn-receipt-row { display: flex; justify-content: space-between; font-size: 14px; padding: 7px 0; }
   .rn-receipt-row b { font-family: 'Big Shoulders Display'; font-size: 16px; }
@@ -549,6 +555,124 @@ function Icon(name, size, color) {
 function ItemIcon(iconName, size, tone, onClick) {
   size = size || 20;
   return h("span", { className: "rn-item-icon " + (tone === "ink" ? "rn-tone-ink" : ""), style: { width: size * 1.9, height: size * 1.9, cursor: onClick ? "pointer" : undefined }, onClick }, Icon(iconName, size));
+}
+// ---- Room Reveal: a shareable 1080x1920 (Instagram Stories) card, pure vanity, no business logic ----
+const SITE_HOST = "rently-site.rently-campus.workers.dev";
+function roomPersona(ids) {
+  const has = id => ids.includes(id), n = ids.length, total = Object.keys(ITEM_DEFS).length;
+  if (n >= total) return { title: "The Whole Setup", line: "Nothing left to buy. Ever." };
+  if (!has("mattress")) return { title: "Sleeps on the Floor", line: "Bold choice. The floor is very supportive." };
+  if (n <= 3 && !has("storage") && !has("wardrobe")) return { title: "The Minimalist", line: "Less stuff. More room. Zero regrets." };
+  if (has("table") && has("lamp") && has("chair")) return { title: "The Night Owl", line: "The desk lamp is basically a personality." };
+  if (has("storage") && has("wardrobe")) return { title: "The Organizer", line: "A place for everything. Yes, everything." };
+  return { title: "The Practical One", line: "Picked what matters. Skipped the rest." };
+}
+const ICON_IMG_CACHE = {};
+function iconImage(name) {
+  if (!ICON_IMG_CACHE[name]) ICON_IMG_CACHE[name] = new Promise(res => {
+    const img = new Image();
+    img.onload = () => res(img); img.onerror = () => res(null);
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 24 24" fill="none" stroke="#F5F1E7" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + (ICON_PATHS[name] || "") + "</svg>");
+  });
+  return ICON_IMG_CACHE[name];
+}
+function roundRectPath(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function wrapLines(c, text, maxW) {
+  const words = text.split(" "), lines = []; let cur = "";
+  words.forEach(w => { const t = cur ? cur + " " + w : w; if (c.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; });
+  if (cur) lines.push(cur);
+  return lines;
+}
+async function drawRoomReveal(canvas, opts) {
+  const W = 1080, H = 1920, ids = opts.ids, first = (opts.firstName || "").trim();
+  canvas.width = W; canvas.height = H;
+  const c = canvas.getContext("2d");
+  try { await Promise.all([document.fonts.load('800 100px "Big Shoulders Display"'), document.fonts.load('700 40px Inter'), document.fonts.load('500 40px Inter')]); } catch (e) {}
+  const keys = Object.keys(ITEM_DEFS), picked = new Set(ids), persona = roomPersona(ids);
+  const icons = await Promise.all(keys.map(k => iconImage(ITEM_DEFS[k].icon)));
+  const DISPLAY = '"Big Shoulders Display", Inter, sans-serif', SANS = "Inter, system-ui, sans-serif";
+  const spaced = px => { if ("letterSpacing" in c) c.letterSpacing = px + "px"; };
+
+  // background: deep ink with two soft glows and a faint dot grid
+  const bg = c.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, "#173630"); bg.addColorStop(1, "#0C1D19");
+  c.fillStyle = bg; c.fillRect(0, 0, W, H);
+  let g = c.createRadialGradient(900, 380, 0, 900, 380, 760); g.addColorStop(0, "rgba(214,51,108,0.50)"); g.addColorStop(1, "rgba(214,51,108,0)");
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  g = c.createRadialGradient(120, 1500, 0, 120, 1500, 820); g.addColorStop(0, "rgba(60,130,110,0.35)"); g.addColorStop(1, "rgba(60,130,110,0)");
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  c.fillStyle = "rgba(245,241,231,0.06)";
+  for (let y = 54; y < H; y += 54) for (let x = 54; x < W; x += 54) { c.beginPath(); c.arc(x, y, 2, 0, 6.2832); c.fill(); }
+
+  // top row (kept inside the Stories safe zone)
+  roundRectPath(c, 90, 220, 92, 92, 24); c.fillStyle = "#F5F1E7"; c.fill();
+  c.textBaseline = "alphabetic"; c.textAlign = "left"; c.font = "800 72px " + DISPLAY; c.fillStyle = "#152E29"; c.fillText("r", 118, 290);
+  c.fillStyle = "#D6336C"; c.beginPath(); c.arc(159, 285, 7, 0, 6.2832); c.fill();
+  c.font = "800 64px " + DISPLAY; c.fillStyle = "#F5F1E7"; c.fillText("rently", 204, 288);
+  c.fillStyle = "#D6336C"; c.beginPath(); c.arc(c.measureText("rently").width + 210, 283, 6, 0, 6.2832); c.fill();
+  c.textAlign = "right"; c.font = "700 30px " + SANS; c.fillStyle = "rgba(245,241,231,0.7)"; spaced(6); c.fillText("ROOM REVEAL", 990, 280); spaced(0);
+
+  // headline block, vertically centred between y=390 and y=930
+  const total = keys.length, n = ids.length;
+  let fs = 180, lines = [];
+  for (; fs >= 110; fs -= 10) { c.font = "800 " + fs + "px " + DISPLAY; lines = wrapLines(c, persona.title.toUpperCase(), 900); if (lines.length <= 2 && lines.every(l => c.measureText(l).width <= 900)) break; }
+  c.font = "500 42px " + SANS; const tag = wrapLines(c, persona.line, 880).slice(0, 2);
+  const eyebrowH = 70, titleH = lines.length * fs * 0.92, tagH = tag.length * 58 + 30, blockH = eyebrowH + titleH + tagH;
+  let y = 390 + Math.max(0, (540 - blockH) / 2);
+  c.textAlign = "left"; c.font = "700 36px " + SANS; c.fillStyle = "#F0A3BE"; spaced(4);
+  c.fillText((first ? first.toUpperCase() + "\u2019S ROOM IS" : "MY ROOM IS"), 90, y + 40); spaced(0); y += eyebrowH;
+  c.font = "800 " + fs + "px " + DISPLAY; c.fillStyle = "#F5F1E7";
+  lines.forEach((l, i) => c.fillText(l, 86, y + fs * 0.85 + i * fs * 0.92)); y += titleH + 30;
+  c.font = "500 42px " + SANS; c.fillStyle = "rgba(245,241,231,0.78)";
+  tag.forEach((l, i) => c.fillText(l, 90, y + 40 + i * 58));
+
+  // count pill
+  const pill = n + " OF " + total + " ESSENTIALS"; c.font = "700 32px " + SANS; spaced(3);
+  const pw = c.measureText(pill).width + 64; roundRectPath(c, 90, 950, pw, 72, 36); c.fillStyle = "#D6336C"; c.fill();
+  c.fillStyle = "#fff"; c.fillText(pill, 122, 998); spaced(0);
+
+  // item tiles: picked are lit with a check, skipped are dashed and dim
+  const tw = 270, th = 190, gx = 30, gy = 22, cols = 3, y0 = 1064;
+  keys.forEach((k, i) => {
+    const row = Math.floor(i / cols), inRow = Math.min(cols, total - row * cols), rowW = inRow * tw + (inRow - 1) * gx;
+    const x = (W - rowW) / 2 + (i % cols) * (tw + gx), ty = y0 + row * (th + gy), on = picked.has(k);
+    roundRectPath(c, x, ty, tw, th, 36);
+    if (on) { c.fillStyle = "rgba(245,241,231,0.10)"; c.fill(); c.strokeStyle = "rgba(245,241,231,0.28)"; c.lineWidth = 3; c.setLineDash([]); c.stroke(); }
+    else { c.strokeStyle = "rgba(245,241,231,0.22)"; c.lineWidth = 3; c.setLineDash([14, 12]); c.stroke(); c.setLineDash([]); }
+    c.globalAlpha = on ? 1 : 0.22; if (icons[i]) c.drawImage(icons[i], x + tw / 2 - 42, ty + 24, 84, 84);
+    let nf = 27; c.font = "700 " + nf + "px " + SANS; while (nf > 18 && c.measureText(ITEM_DEFS[k].name).width > tw - 36) { nf--; c.font = "700 " + nf + "px " + SANS; }
+    c.textAlign = "center"; c.fillStyle = "#F5F1E7"; c.fillText(ITEM_DEFS[k].name, x + tw / 2, ty + th - 28); c.globalAlpha = 1;
+    if (on) { c.fillStyle = "#D6336C"; c.beginPath(); c.arc(x + tw - 30, ty + 30, 20, 0, 6.2832); c.fill(); c.strokeStyle = "#fff"; c.lineWidth = 4; c.lineCap = "round"; c.lineJoin = "round"; c.beginPath(); c.moveTo(x + tw - 39, ty + 30); c.lineTo(x + tw - 32, ty + 37); c.lineTo(x + tw - 21, ty + 23); c.stroke(); }
+  });
+
+  // footer
+  c.textAlign = "center"; c.font = "800 52px " + DISPLAY; c.fillStyle = "#F5F1E7"; c.fillText("SET UP YOUR ROOM. OWN NONE OF IT.", W / 2, 1738);
+  c.font = "600 30px " + SANS; c.fillStyle = "rgba(245,241,231,0.62)"; c.fillText(SITE_HOST, W / 2, 1790);
+}
+function RoomRevealCard(props) {
+  const ref = useRef(null), key = props.ids.join(",");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (ref.current) drawRoomReveal(ref.current, { ids: props.ids, firstName: props.firstName }); }, [key, props.firstName]);
+  const canShare = typeof navigator !== "undefined" && typeof navigator.canShare === "function" && (() => { try { return navigator.canShare({ files: [new File([""], "x.png", { type: "image/png" })] }); } catch (e) { return false; } })();
+  const toBlob = () => new Promise(res => ref.current.toBlob(res, "image/png"));
+  async function download() {
+    setBusy(true);
+    const blob = await toBlob();
+    if (blob) { const url = URL.createObjectURL(blob), a = document.createElement("a"); a.href = url; a.download = "rently-room-reveal.png"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500); }
+    setBusy(false);
+  }
+  async function share() {
+    setBusy(true);
+    try { const blob = await toBlob(); await navigator.share({ files: [new File([blob], "rently-room-reveal.png", { type: "image/png" })], title: "My Rently room", text: "Set up my room without owning any of it." }); }
+    catch (e) { if (e && e.name !== "AbortError") await download(); }
+    setBusy(false);
+  }
+  return h("div", { className: "rn-reveal" },
+    h("canvas", { ref, className: "rn-reveal-canvas", role: "img", "aria-label": "Your Room Reveal card: " + roomPersona(props.ids).title }),
+    h("div", { className: "rn-reveal-actions" },
+      h("button", { className: "rn-btn rn-btn-primary", onClick: canShare ? share : download, disabled: busy }, Icon("arrowRight", 16), canShare ? "Share to Stories" : "Download for Stories"),
+      canShare && h("button", { className: "rn-btn rn-btn-ghost", onClick: download, disabled: busy }, "Save image")
+    )
+  );
 }
 function money(n) { return "\u20b9" + Number(n).toLocaleString("en-IN"); }
 function dateToISO(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
@@ -1642,6 +1766,7 @@ function App() {
   }
   function ConfirmationView() {
     const lastBooking = myBookings.find(b => b.id === lastBookingId);
+    const revealIds = ((lastBooking && lastBooking.items) || []).filter(i => ITEM_DEFS[i]);
     return h("div", { className: "rn-confirm-wrap" },
       h("div", { className: "rn-confirm-icon" }, Icon("check", 30)),
       h("h1", { className: "rn-display" }, "Booking confirmed"),
@@ -1654,6 +1779,11 @@ function App() {
       ),
       lastBooking && PaymentInfo(lastBooking.id, priceForItems(lastBooking.items, lastBooking.semester_start, lastBooking.semester_end), lastBooking.payment_status),
       PickupCode(lastBooking),
+      revealIds.length > 0 && h("div", { className: "rn-reveal-section" },
+        h("h3", null, "Your Room Reveal"),
+        h("p", null, "Your setup, as a card. Post it and tag your hostel."),
+        h(RoomRevealCard, { ids: revealIds, firstName: ((lastBooking && lastBooking.student_name) || (profile && profile.full_name) || "").trim().split(" ")[0] })
+      ),
       h("div", { style: { display: "flex", gap: 12, justifyContent: "center" } },
         h("button", { className: "rn-btn rn-btn-dark", onClick: () => goTo("dashboard") }, "Go to My Rently"),
         h("button", { className: "rn-btn rn-btn-ghost", onClick: () => goTo("build") }, "Book something else")
