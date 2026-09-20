@@ -1265,6 +1265,7 @@ function App() {
   const [contactNote, setContactNote] = useState("");
   const [contactDone, setContactDone] = useState(false);
   const [contactMsgs, setContactMsgs] = useState([]);
+  const [waLog, setWaLog] = useState([]);
   const [dropOffDate, setDropOffDate] = useState(() => addDaysISO(30));
   const [pickupDate, setPickupDate] = useState(() => addDaysISO(66));
   const [storageMsg, setStorageMsg] = useState("");
@@ -1363,7 +1364,7 @@ function App() {
         start = addDaysISO(7); end = addDaysISO(7 + len); setSemRolled(true);
       } else setSemRolled(false);
       setSemStart(start); setSemEnd(end);
-      if (profile.role === "admin") { refreshAllBookings(); refreshInventory(); refreshAllStorage(); refreshAllMoves(); refreshAllProfiles(); refreshContact(); }
+      if (profile.role === "admin") { refreshAllBookings(); refreshInventory(); refreshAllStorage(); refreshAllMoves(); refreshAllProfiles(); refreshContact(); refreshWaLog(); }
       else if (profile.role === "transporter") { refreshAllBookings(); refreshAllStorage(); refreshAllMoves(); }
       else if (profile.role === "partner") { refreshInventory(); refreshDemand(); refreshManifest(); }
       else { refreshMyBookings(); refreshMyStorage(); refreshMyMoves(); }
@@ -2652,6 +2653,18 @@ function App() {
           )))
         ))
       ),
+      h("div", { className: "rn-admin-section" }, h("h3", null, "WhatsApp messages"),
+        waLog.length > 0 && !waLog[0].ok && h("p", { className: "rn-note", role: "alert", style: { color: "var(--magenta-dark)", fontWeight: 600 } }, "Latest message failed. " + waCause(waLog[0])),
+        waLog.length === 0 ? h("p", { className: "rn-note" }, "No messages sent yet.") :
+        h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+          h("thead", null, h("tr", null, h("th", null, "Time"), h("th", null, "Type"), h("th", null, "Ref"), h("th", null, "Sent as"), h("th", null, "Result"))),
+          h("tbody", null, waLog.map(m => h("tr", { key: m.id },
+            h("td", null, new Date(m.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })),
+            h("td", null, m.kind), h("td", null, m.ref_id || "—"), h("td", null, m.via || "—"),
+            h("td", null, m.ok ? (m.delivery_status || "sent") : "failed (" + (m.error_code || "error") + ")")
+          )))
+        ))
+      ),
       h("div", { className: "rn-admin-section" }, h("h3", null, "Contact messages" + (contactMsgs.filter(m => m.status === "new").length ? " (" + contactMsgs.filter(m => m.status === "new").length + " new)" : "")),
         contactMsgs.length === 0 ? h("p", { className: "rn-note" }, "No messages yet.") :
         h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
@@ -2793,6 +2806,18 @@ function App() {
     );
   }
 
+  async function refreshWaLog() {
+    const { data } = await db.from("whatsapp_log").select("id,created_at,kind,ref_id,via,ok,error_code,error,delivery_status").order("created_at", { ascending: false }).limit(8);
+    if (data) setWaLog(data);
+  }
+  function waCause(row) {
+    if (!row) return "";
+    if (row.error_code === 190) return "The WhatsApp access token has expired. Create a permanent System User token in Meta and update the WHATSAPP_TOKEN secret.";
+    if (row.error_code === 131030) return "The recipient is not on the allowed list for the Meta test number. Add them in Meta, or move to a live number.";
+    if (row.error_code === 131047) return "The 24-hour reply window has closed and no approved template was used. Create and approve the message templates in Meta.";
+    if (row.error_code && String(row.error_code).startsWith("132")) return "A message template is missing or not approved yet in Meta.";
+    return row.error || "The send failed. Check the message log.";
+  }
   async function refreshContact() {
     const { data } = await db.from("contact_messages").select("*").order("created_at", { ascending: false }).limit(100);
     if (data) setContactMsgs(data);
