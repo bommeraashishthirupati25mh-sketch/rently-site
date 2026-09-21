@@ -18,9 +18,9 @@ if (!TOKEN.startsWith("EAA")) { console.error("That does not look like a token (
 
 const templates = [
   {
-    name: "rently_booking_confirmed",
-    text: "Hi {{1}}, your Rently booking {{2}} is confirmed. Delivery: {{3}}. Show pickup code {{4}} to the delivery crew at handover. Pay by UPI to {{5}} when ready and we will mark it paid once it arrives.",
-    example: ["Rohan", "RNT-4821", "Hostel A room 214, Morning", "482913", "rently@upi"],
+    name: "rently_booking_confirmed_v2",
+    text: "Hi {{1}}, your Rently booking {{2}} is confirmed. Delivery: {{3}}. Your handover details are in My Rently on our site. Pay by UPI to {{4}} when ready and we will mark it paid once it arrives.",
+    example: ["Rohan", "RNT-4821", "Hostel A room 214, Morning", "rently@upi"],
   },
   {
     name: "rently_storage_confirmed",
@@ -50,6 +50,7 @@ for (const t of templates) {
   });
   const data = await res.json().catch(() => ({}));
   if (res.ok) console.log(`created  ${t.name}  status=${data.status}  id=${data.id}`);
+  else if (data?.error?.error_subcode === 2388024) console.log(`exists   ${t.name}  (already created, fine)`);
   else console.log(`FAILED   ${t.name}  ${data?.error?.code}: ${data?.error?.error_user_msg || data?.error?.message}`);
 }
 console.log("\nCheck approval status in Meta: WhatsApp Manager > Message templates.");

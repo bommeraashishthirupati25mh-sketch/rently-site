@@ -63,7 +63,7 @@ function bookingMessage(row: any, name: string) {
   const items = Array.isArray(row.items) ? row.items.join(", ") : "";
   const delivery = `${row.hostel_block} room ${row.room_info}${row.delivery_slot ? ", " + row.delivery_slot : ""}`;
   return {
-    template: { name: "rently_booking_confirmed", params: [name, row.id, delivery, row.pickup_otp, UPI_ID] },
+    template: { name: "rently_booking_confirmed_v2", params: [name, row.id, delivery, UPI_ID] },
     text: `Hi ${name}! Your Rently booking ${row.id} is confirmed.\nItems: ${items}\nDelivery: ${delivery}\nYour pickup code (show this at handover): ${row.pickup_otp}\nPay via UPI when ready: ${UPI_ID}. We'll mark it paid once received.`,
   };
 }
