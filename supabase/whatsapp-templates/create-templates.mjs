@@ -7,8 +7,14 @@
 // The parameter order here MUST match what supabase/functions/whatsapp-notify and whatsapp-reminders send.
 
 const WABA_ID = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || "2025148634798207";
-const TOKEN = process.env.WHATSAPP_TOKEN;
-if (!TOKEN) { console.error("Set WHATSAPP_TOKEN first."); process.exit(1); }
+import readline from "node:readline/promises";
+let TOKEN = (process.env.WHATSAPP_TOKEN || "").trim();
+if (!TOKEN.startsWith("EAA")) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  TOKEN = (await rl.question("Paste your WhatsApp token, then press Enter: ")).trim().replace(/^["']+|["']+$/g, "");
+  rl.close();
+}
+if (!TOKEN.startsWith("EAA")) { console.error("That does not look like a token (it should start with EAA)."); process.exit(1); }
 
 const templates = [
   {
