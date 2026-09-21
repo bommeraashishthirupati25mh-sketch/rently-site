@@ -651,12 +651,21 @@ function ItemIcon(iconName, size, tone, onClick) {
 const SITE_HOST = "rently-site.rently-campus.workers.dev";
 function roomPersona(ids) {
   const has = id => ids.includes(id), n = ids.length, total = Object.keys(ITEM_DEFS).length;
-  if (n >= total) return { title: "The Whole Setup", line: "Nothing left to buy. Ever." };
-  if (!has("mattress")) return { title: "Sleeps on the Floor", line: "Bold choice. The floor is very supportive." };
-  if (n <= 3 && !has("storage") && !has("wardrobe")) return { title: "The Minimalist", line: "Less stuff. More room. Zero regrets." };
-  if (has("table") && has("lamp") && has("chair")) return { title: "The Night Owl", line: "The desk lamp is basically a personality." };
-  if (has("storage") && has("wardrobe")) return { title: "The Organizer", line: "A place for everything. Yes, everything." };
-  return { title: "The Practical One", line: "Picked what matters. Skipped the rest." };
+  const pick = (title, lines) => {
+    let hsh = 0; const key = ids.slice().sort().join(",");
+    for (let i = 0; i < key.length; i++) hsh = (hsh * 31 + key.charCodeAt(i)) >>> 0;
+    return { title, line: lines[hsh % lines.length] };
+  };
+  if (n >= total) return pick("The Whole Setup", ["Nothing left to buy. Ever.", "Fully furnished, fully unbothered.", "Your room called. It said thank you.", "Everything but the excuses."]);
+  if (!has("mattress")) return pick("Sleeps on the Floor", ["Bold choice. The floor is very supportive.", "Back pain sold separately.", "Who needs a bed when you have core strength?", "Rent is cheap when the bed is imaginary.", "It's not a bed, it's a horizontal lifestyle."]);
+  if (n === 1) return pick("Bed and Nothing Else", ["Sleep first. Everything else is a plot twist.", "Priorities: horizontal.", "The bare minimum, beautifully executed."]);
+  if (n <= 3 && !has("storage") && !has("wardrobe")) return pick("The Minimalist", ["Less stuff. More room. Zero regrets.", "Marie Kondo would nod once.", "Owns little. Judges nothing.", "Small setup, big main-character energy."]);
+  if (has("table") && has("lamp") && has("chair")) return pick("The Night Owl", ["The desk lamp is basically a personality.", "Studies at 3 AM. Sleeps through the 9 AM.", "Desk, chair, lamp. Assignments still unstarted.", "Productivity is a vibe. Deadlines are a feeling."]);
+  if (has("storage") && has("wardrobe")) return pick("The Organizer", ["A place for everything. Yes, everything.", "Folded clothes, unfolded ambition.", "Spreadsheet energy, but for socks.", "Chaos has no permanent address here."]);
+  if (has("extension_board") && n >= 4) return pick("The Power User", ["Charging four things at once. The fuse is nervous.", "Plugs for days, sockets for dreams.", "Low battery is a thing of the past."]);
+  if (has("chair") && !has("table")) return pick("The Lounger", ["A chair and no desk. Studying is a state of mind.", "Sits well. Studies later.", "Chair without a desk: pure optimism."]);
+  if (has("table") && !has("chair")) return pick("The Standing Scholar", ["Desk yes, chair no. Standing is a lifestyle.", "Studies on the edge of the bed. Classic.", "Good posture is a lie you tell yourself."]);
+  return pick("The Practical One", ["Picked what matters. Skipped the rest.", "Efficient. Slightly smug.", "Just enough setup, zero drama.", "Buys smart. Sleeps well."]);
 }
 const ICON_IMG_CACHE = {};
 function iconImage(name) {
