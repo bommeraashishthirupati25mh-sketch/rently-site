@@ -195,6 +195,13 @@
   .rn-field textarea, .rn-field select { width: 100%; font-family: 'Inter'; font-size: 14.5px; padding: 11px 13px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--cream); color: var(--ink); }
   .rn-field textarea { min-height: 130px; resize: vertical; line-height: 1.5; }
   .rn-field textarea:focus, .rn-field select:focus { outline: 2px solid var(--magenta); outline-offset: 1px; border-color: var(--magenta); }
+  .rn-about-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-top: 20px; }
+  .rn-about-card { border: 1px solid var(--line); border-radius: 16px; padding: 20px; background: #fff; }
+  .rn-about-card .rn-about-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--magenta-tint); color: var(--magenta-dark); display: flex; align-items: center; justify-content: center; font-family: 'Big Shoulders Display'; font-weight: 800; font-size: 17px; margin-bottom: 12px; }
+  .rn-about-card h3 { font-size: 15.5px; margin: 0 0 2px; }
+  .rn-about-card .rn-about-role { font-size: 12.5px; color: var(--magenta-dark); font-weight: 600; margin: 0 0 8px; }
+  .rn-about-card p { font-size: 13.5px; color: var(--ink-soft); margin: 0; line-height: 1.55; }
+  .rn-about-values { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 20px; }
   .rn-contact-grid { display: grid; grid-template-columns: 1fr 320px; gap: 24px; align-items: start; margin-top: 24px; }
   .rn-contact-side h3 { margin: 0 0 6px; font-size: 16px; }
   .rn-contact-side p { margin: 0 0 16px; font-size: 14px; color: var(--ink-soft); line-height: 1.55; }
@@ -597,7 +604,7 @@ const ADVISOR_EXAMPLES = [
   "Just here for a short exchange semester, keep it minimal",
 ];
 const DELIVERY_STEPS = ["Students book", "Rently aggregates demand", "Partner prepares inventory", "One campus delivery", "Hostel blocks receive orders"];
-const VIEW_PATHS = { home: "/", build: "/build", circles: "/circles", storage: "/storage", moves: "/moves", wishlist: "/wishlist", privacy: "/privacy", terms: "/terms", contact: "/contact" };
+const VIEW_PATHS = { home: "/", build: "/build", circles: "/circles", storage: "/storage", moves: "/moves", wishlist: "/wishlist", privacy: "/privacy", terms: "/terms", contact: "/contact", about: "/about" };
 const PATH_VIEWS = Object.fromEntries(Object.entries(VIEW_PATHS).filter(([v]) => v !== "home").map(([v, p]) => [p, v]));
 const CIRCLES_FEED = [
   { id: "wifi-maintenance", icon: "clipboard", kind: "Announcement", title: "Hostel Wi-Fi maintenance window", meta: "Today \u00b7 9\u201311 PM" },
@@ -2858,6 +2865,47 @@ function App() {
     if (error) { setContactNote("Couldn't send your message: " + error.message + ". Please try again in a moment."); return; }
     setContactDone(true); setContactText("");
   }
+  function AboutView() {
+    const team = [
+      { i: "AB", n: "Ashish Bommera", r: "Founder", d: "Started Rently after seeing his own hostel block buy and bin the same room-setup items every semester. Leads product and the campus partnerships." },
+      { i: "AT", n: "Animesh Tiwari", r: "Team", d: "Works on the catalogue, pricing and the operations side of the platform." },
+      { i: "AP", n: "Aditya Puranik", r: "Team", d: "Works on the storage and moves flows and testing across roles." },
+      { i: "SG", n: "Sai Krishna Gopal", r: "Team", d: "Works on Circles and the community side of the product." },
+      { i: "MH", n: "Manish HM", r: "Team", d: "Works on delivery operations and the logistics crew workflow." },
+    ];
+    const values = [
+      { h: "Compliant by default", p: "Every item is checked against hostel rules before it's listed. If it can't be inspected and allowed, we don't stock it." },
+      { h: "No stranger deals", p: "Handover is verified by a pickup code, not a WhatsApp group and a hope." },
+      { h: "Priced to your dates", p: "You pay for the days you actually stay, not a flat guess at a semester." },
+      { h: "No gateway fees", p: "Payment is UPI, confirmed by a person. That's a rule, not a missing feature." },
+    ];
+    return h(React.Fragment, null,
+      h("div", { className: "rn-simple-hero" },
+        h("h1", { className: "rn-display" }, "About Rently"),
+        h("p", null, "Rently delivers a hostel-compliant room setup on move-in day and collects it on move-out day, so students stop buying things they'll throw away in a semester.")
+      ),
+      h("div", { className: "rn-acct-card", style: { marginTop: 24, maxWidth: 720 } },
+        h("h3", null, "Why we built this"),
+        h("p", { style: { margin: 0, fontSize: 14.5, color: "var(--ink-soft)", lineHeight: 1.65 } },
+          "Every semester, students moving into hostel rooms buy the same short-lived items — a mattress topper, a lamp, a table, a chair — use them for a few months, then discard them, sell them at a loss, or carry them home. The next batch repeats the same purchase from scratch. We started Rently on one campus to turn that cycle into a single booking: pick what you need, we deliver it, we collect it, and it goes back out to the next student instead of a landfill."
+        )
+      ),
+      h("h3", { style: { marginTop: 28, marginBottom: 4, fontSize: 16 } }, "What we care about"),
+      h("div", { className: "rn-about-values" },
+        values.map(v => h("div", { key: v.h, className: "rn-about-card" }, h("h3", null, v.h), h("p", null, v.p)))
+      ),
+      h("h3", { style: { marginTop: 28, marginBottom: 4, fontSize: 16 } }, "The team"),
+      h("div", { className: "rn-about-grid" },
+        team.map(t => h("div", { key: t.n, className: "rn-about-card" },
+          h("div", { className: "rn-about-avatar" }, t.i),
+          h("h3", null, t.n),
+          h("p", { className: "rn-about-role" }, t.r),
+          h("p", null, t.d)
+        ))
+      ),
+      h("p", { style: { marginTop: 24, fontSize: 14.5 } }, "Questions or want to work with us? ", h("a", { href: "/contact", style: { color: "var(--magenta-dark)", fontWeight: 600 }, onClick: e => { e.preventDefault(); goTo("contact"); } }, "Contact us"), ".")
+    );
+  }
   function ContactView() {
     const nameVal = contactName !== null ? contactName : (profile && profile.full_name) || "";
     const emailVal = contactEmail !== null ? contactEmail : (session && session.user && session.user.email) || "";
@@ -2964,6 +3012,7 @@ function App() {
   else if (view === "privacy") body = PrivacyView();
   else if (view === "terms") body = TermsView();
   else if (view === "contact") body = ContactView();
+  else if (view === "about") body = AboutView();
 
   return h("div", null,
     Header(),
@@ -2973,6 +3022,7 @@ function App() {
       h("span", null, "Live pilot build \u00b7 backed by a real database \u00b7 built for the Rently pilot"),
       h("div", { style: { display: "flex", gap: 16 } },
         !isStaffAccount && h("a", { href: "/blog/index.html" }, "Blog"),
+        h("a", { href: "/about", onClick: e => { e.preventDefault(); goTo("about"); } }, "About us"),
         h("a", { href: "/contact", onClick: e => { e.preventDefault(); goTo("contact"); } }, "Contact us"),
         h("a", { href: "/privacy", onClick: e => { e.preventDefault(); goTo("privacy"); } }, "Privacy"),
         h("a", { href: "/terms", onClick: e => { e.preventDefault(); goTo("terms"); } }, "Terms")
