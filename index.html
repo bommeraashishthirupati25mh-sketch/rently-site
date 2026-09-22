@@ -202,6 +202,14 @@
   .rn-about-card .rn-about-role { font-size: 12.5px; color: var(--magenta-dark); font-weight: 600; margin: 0 0 8px; }
   .rn-about-card p { font-size: 13.5px; color: var(--ink-soft); margin: 0; line-height: 1.55; }
   .rn-about-values { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 20px; }
+  .rn-balance-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+  .rn-balance-row:last-child { border-bottom: none; }
+  .rn-balance-owed { color: #1B7F4B; font-weight: 700; }
+  .rn-balance-owes { color: var(--magenta-dark); font-weight: 700; }
+  .rn-balance-even { color: var(--ink-faint); font-weight: 600; }
+  .rn-calc-table input[type="number"] { width: 88px; padding: 6px 8px; font-size: 13.5px; border-radius: 7px; border: 1.5px solid var(--line); background: var(--cream); }
+  .rn-tool-teaser { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .rn-tool-teaser .rn-trust-card { cursor: pointer; }
   .rn-contact-grid { display: grid; grid-template-columns: 1fr 320px; gap: 24px; align-items: start; margin-top: 24px; }
   .rn-contact-side h3 { margin: 0 0 6px; font-size: 16px; }
   .rn-contact-side p { margin: 0 0 16px; font-size: 14px; color: var(--ink-soft); line-height: 1.55; }
@@ -525,6 +533,9 @@ const CATEGORIES = [
 ];
 const BUNDLE_PRICE = 2100;
 const MOVE_PRICE = 300;
+// Illustrative "buying new" estimates for the rent-vs-buy calculator, editable by the student. Not live market data.
+const TYPICAL_BUY_PRICE = { mattress: 1200, table: 1800, lamp: 600, storage: 900, extension_board: 400, chair: 2200, wardrobe: 1500 };
+const DEFAULT_RESALE_PCT = 35;
 const SEMESTER_BASELINE_DAYS = 90; // prices are set for a standard 3-month semester; longer/shorter picks scale from here
 const UPI_ID = "ashish261105--3@okaxis";
 const LOW_STOCK = 30;
@@ -604,7 +615,7 @@ const ADVISOR_EXAMPLES = [
   "Just here for a short exchange semester, keep it minimal",
 ];
 const DELIVERY_STEPS = ["Students book", "Rently aggregates demand", "Partner prepares inventory", "One campus delivery", "Hostel blocks receive orders"];
-const VIEW_PATHS = { home: "/", build: "/build", circles: "/circles", storage: "/storage", moves: "/moves", wishlist: "/wishlist", privacy: "/privacy", terms: "/terms", contact: "/contact", about: "/about", confirm: "/confirm" };
+const VIEW_PATHS = { home: "/", build: "/build", circles: "/circles", storage: "/storage", moves: "/moves", wishlist: "/wishlist", privacy: "/privacy", terms: "/terms", contact: "/contact", about: "/about", confirm: "/confirm", split: "/split", calculator: "/calculator" };
 const PATH_VIEWS = Object.fromEntries(Object.entries(VIEW_PATHS).filter(([v]) => v !== "home").map(([v, p]) => [p, v]));
 const CIRCLES_FEED = [
   { id: "wifi-maintenance", icon: "clipboard", kind: "Announcement", title: "Hostel Wi-Fi maintenance window", meta: "Today \u00b7 9\u201311 PM" },
@@ -1281,6 +1292,62 @@ function App() {
   const [contactNote, setContactNote] = useState("");
   const [contactDone, setContactDone] = useState(false);
   const [contactMsgs, setContactMsgs] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [expTitle, setExpTitle] = useState("");
+  const [expAmount, setExpAmount] = useState("");
+  const [expPaidBy, setExpPaidBy] = useState("Me");
+  const [expParticipants, setExpParticipants] = useState("Me");
+  const [expNote, setExpNote] = useState("");
+  const [expMsg, setExpMsg] = useState("");
+  async function refreshExpenses() {
+    const { data } = await db.from("expense_entries").select("*").order("created_at", { ascending: false });
+    if (data) setExpenses(data);
+  }
+  function parseNames(text) {
+    return Array.from(new Set(text.split(",").map(n => n.trim()).filter(Boolean))).slice(0, 12);
+  }
+  async function submitExpense(e) {
+    e.preventDefault();
+    if (!session || busy) return;
+    const amount = parseFloat(expAmount);
+    if (!expTitle.trim()) { setExpMsg("Give the expense a name."); return; }
+    if (!amount || amount <= 0) { setExpMsg("Enter a valid amount."); return; }
+    const paidBy = expPaidBy.trim() || "Me";
+    let participants = parseNames(expParticipants);
+    if (participants.length === 0) participants = [paidBy];
+    if (!participants.includes(paidBy)) participants = [paidBy, ...participants];
+    setBusy(true); setExpMsg("");
+    const { error } = await db.from("expense_entries").insert({
+      student_id: session.user.id, title: expTitle.trim().slice(0, 100), amount,
+      paid_by: paidBy.slice(0, 40), participants, note: expNote.trim().slice(0, 300) || null,
+    });
+    setBusy(false);
+    if (error) { setExpMsg("Couldn't save that: " + error.message); return; }
+    setExpTitle(""); setExpAmount(""); setExpNote("");
+    refreshExpenses();
+  }
+  async function deleteExpense(id) {
+    const { error } = await db.from("expense_entries").delete().eq("id", id);
+    if (error) { alert("Couldn't delete: " + error.message); return; }
+    setExpenses(prev => prev.filter(x => x.id !== id));
+  }
+  function computeBalances(rows) {
+    const balance = {};
+    rows.forEach(r => {
+      const n = r.participants.length || 1;
+      const share = r.amount / n;
+      r.participants.forEach(name => { balance[name] = (balance[name] || 0) - share; });
+      balance[r.paid_by] = (balance[r.paid_by] || 0) + r.amount;
+    });
+    return balance;
+  }
+  const [calcSelected, setCalcSelected] = useState(() => new Set(Object.keys(ITEM_DEFS)));
+  const [calcDays, setCalcDays] = useState(SEMESTER_BASELINE_DAYS);
+  const [calcResalePct, setCalcResalePct] = useState(DEFAULT_RESALE_PCT);
+  const [calcBuyPrice, setCalcBuyPrice] = useState(() => ({ ...TYPICAL_BUY_PRICE }));
+  function toggleCalcItem(id) {
+    setCalcSelected(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  }
   const [supplyRequests, setSupplyRequests] = useState([]);
   const [supplyItem, setSupplyItem] = useState("");
   const [supplyQty, setSupplyQty] = useState("");
@@ -1291,6 +1358,9 @@ function App() {
   const [confirmMsg, setConfirmMsg] = useState("");
   const [confirmDone, setConfirmDone] = useState(false);
   const [confirmBusy, setConfirmBusy] = useState(false);
+  useEffect(() => {
+    if (view === "split" && session) refreshExpenses();
+  }, [view, session]);
   useEffect(() => {
     if (view !== "confirm" || !authReady || !session) return;
     const isStaff = profile && (profile.role === "admin" || profile.role === "transporter");
@@ -2090,6 +2160,13 @@ function App() {
         h("div", { className: "rn-trust-grid" }, TRUST_POINTS.map(t => h("div", { key: t.title, className: "rn-trust-card" }, ItemIcon(t.icon, 18, "ink"), h("h4", null, t.title), h("p", null, t.desc),
           t.title === "Damage protection" && h("button", { className: "rn-link-btn", style: { marginTop: 8 }, onClick: () => setPolicyOpen(true) }, "View wear & damage policy")
         )))
+      ),
+      !isStaffAccount && h("section", { className: "rn-section" },
+        h("div", { className: "rn-section-head" }, h("h2", { className: "rn-display" }, "Free tools. No booking needed.")),
+        h("div", { className: "rn-tool-teaser" },
+          h("div", { className: "rn-trust-card", onClick: () => goTo("calculator") }, ItemIcon("archive", 18, "ink"), h("h4", null, "Rent vs. buy calculator"), h("p", null, "See the real cost of buying room items new versus renting them for the semester.")),
+          h("div", { className: "rn-trust-card", onClick: () => goTo("split") }, ItemIcon("users", 18, "ink"), h("h4", null, "Roommate expense splitter"), h("p", null, "Split rent, bills and shared supplies with your roommates, and save it so you can check it later."))
+        )
       ),
       testimonials.length > 0 && h("section", { className: "rn-section" },
         h("div", { className: "rn-section-head" }, h("h2", { className: "rn-display" }, "What students are saying.")),
@@ -3030,6 +3107,109 @@ function App() {
       h("button", { className: "rn-btn rn-btn-primary", style: { width: "100%", justifyContent: "center" }, disabled: !matches || confirmBusy, onClick: handleConfirmHandover }, confirmBusy ? "Confirming…" : "Confirm handover", Icon("arrowRight", 16))
     );
   }
+  function ExpenseSplitterView() {
+    const balances = computeBalances(expenses);
+    const names = Object.keys(balances).sort();
+    return h(React.Fragment, null,
+      h("div", { className: "rn-simple-hero" },
+        h("h1", { className: "rn-display" }, "Roommate expense splitter"),
+        h("p", null, "Split rent, electricity, cleaning supplies or snacks with your roommates. This has nothing to do with booking through Rently, use it even if you never rent a single item.")
+      ),
+      !session
+        ? h("div", { className: "rn-acct-card", style: { marginTop: 20, maxWidth: 480 } },
+            h("p", { className: "rn-note", style: { marginTop: 0 } }, "Log in to save expenses so you can check them later."),
+            AuthForm({ compact: true }))
+        : h(React.Fragment, null,
+            h("div", { className: "rn-acct-card", style: { marginTop: 20 } },
+              h("h3", null, "Add an expense"),
+              h("form", { onSubmit: submitExpense, style: { display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" } },
+                h("div", { className: "rn-field", style: { marginBottom: 0, flex: 1, minWidth: 160 } }, h("label", null, "What was it for"),
+                  h("input", { value: expTitle, onChange: e => setExpTitle(e.target.value), placeholder: "e.g. Electricity bill" })),
+                h("div", { className: "rn-field", style: { marginBottom: 0, width: 120 } }, h("label", null, "Amount"),
+                  h("input", { type: "number", min: 1, step: "0.01", value: expAmount, onChange: e => setExpAmount(e.target.value) })),
+                h("div", { className: "rn-field", style: { marginBottom: 0, width: 140 } }, h("label", null, "Paid by"),
+                  h("input", { value: expPaidBy, onChange: e => setExpPaidBy(e.target.value), placeholder: "Me" })),
+                h("div", { className: "rn-field", style: { marginBottom: 0, flex: 1, minWidth: 200 } }, h("label", null, "Split between (comma-separated)"),
+                  h("input", { value: expParticipants, onChange: e => setExpParticipants(e.target.value), placeholder: "Me, Aakash, Rohan" })),
+                h("div", { className: "rn-field", style: { marginBottom: 0, flex: 1, minWidth: 160 } }, h("label", null, "Note (optional)"),
+                  h("input", { value: expNote, onChange: e => setExpNote(e.target.value), placeholder: "Optional" })),
+                h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: busy }, busy ? "Saving…" : "Save expense")
+              ),
+              expMsg && h("p", { className: "rn-note" }, expMsg)
+            ),
+            names.length > 0 && h("div", { className: "rn-acct-card", style: { marginTop: 20 } },
+              h("h3", null, "Balances"),
+              names.map(name => {
+                const bal = Math.round(balances[name] * 100) / 100;
+                return h("div", { key: name, className: "rn-balance-row" },
+                  h("span", null, name),
+                  bal > 0.5 ? h("span", { className: "rn-balance-owed" }, "is owed ", money(bal))
+                    : bal < -0.5 ? h("span", { className: "rn-balance-owes" }, "owes ", money(-bal))
+                    : h("span", { className: "rn-balance-even" }, "settled up")
+                );
+              })
+            ),
+            h("div", { className: "rn-acct-card", style: { marginTop: 20 } },
+              h("h3", null, "Saved expenses"),
+              expenses.length === 0
+                ? h("p", { className: "rn-note" }, "Nothing saved yet. Add your first expense above.")
+                : h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+                    h("thead", null, h("tr", null, h("th", null, "Date"), h("th", null, "What"), h("th", null, "Amount"), h("th", null, "Paid by"), h("th", null, "Split between"), h("th", null))),
+                    h("tbody", null, expenses.map(x => h("tr", { key: x.id },
+                      h("td", null, formatDate(x.created_at.slice(0, 10), true)),
+                      h("td", null, x.title, x.note && h("div", { style: { fontSize: 12, color: "var(--ink-faint)" } }, x.note)),
+                      h("td", null, money(x.amount)),
+                      h("td", null, x.paid_by),
+                      h("td", null, x.participants.join(", ")),
+                      h("td", null, h("button", { className: "rn-btn rn-btn-ghost", onClick: () => { if (confirm("Delete this expense?")) deleteExpense(x.id); } }, "Delete"))
+                    )))
+                  ))
+            )
+          )
+    );
+  }
+  function CalculatorView() {
+    const ids = Object.keys(ITEM_DEFS);
+    let rentTotal = 0, buyTotal = 0;
+    const rows = ids.map(id => {
+      const rent = roundMoney((priceOf(id) || 0) * (calcDays / SEMESTER_BASELINE_DAYS));
+      const buy = calcBuyPrice[id] || 0;
+      const net = Math.round(buy * (1 - calcResalePct / 100));
+      if (calcSelected.has(id)) { rentTotal += rent; buyTotal += net; }
+      return { id, rent, buy, net };
+    });
+    const diff = buyTotal - rentTotal;
+    return h(React.Fragment, null,
+      h("div", { className: "rn-simple-hero" },
+        h("h1", { className: "rn-display" }, "Rent vs. buy calculator"),
+        h("p", null, "See the real cost of buying room items new versus renting them for the semester. No login, and it has nothing to do with booking through Rently.")
+      ),
+      h("div", { className: "rn-acct-card", style: { marginTop: 20 } },
+        h("div", { style: { display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 14 } },
+          h("div", { className: "rn-field", style: { marginBottom: 0, width: 160 } }, h("label", null, "How many days?"),
+            h("input", { type: "number", min: 1, max: 365, value: calcDays, onChange: e => setCalcDays(Math.max(1, parseInt(e.target.value, 10) || 1)) })),
+          h("div", { className: "rn-field", style: { marginBottom: 0, width: 220 } }, h("label", null, "Expected resale value when you leave (%)"),
+            h("input", { type: "number", min: 0, max: 90, value: calcResalePct, onChange: e => setCalcResalePct(Math.max(0, Math.min(90, parseInt(e.target.value, 10) || 0))) }))
+        ),
+        h("div", { className: "rn-table-wrap rn-calc-table" }, h("table", { className: "rn-table" },
+          h("thead", null, h("tr", null, h("th", null), h("th", null, "Item"), h("th", null, "Rently price for ", calcDays, " days"), h("th", null, "Typical buy price"), h("th", null, "Net cost if you buy"))),
+          h("tbody", null, rows.map(r => h("tr", { key: r.id, style: { opacity: calcSelected.has(r.id) ? 1 : 0.45 } },
+            h("td", null, h("input", { type: "checkbox", checked: calcSelected.has(r.id), onChange: () => toggleCalcItem(r.id) })),
+            h("td", null, ITEM_DEFS[r.id].name),
+            h("td", null, money(r.rent)),
+            h("td", null, h("input", { type: "number", min: 0, value: r.buy, onChange: e => setCalcBuyPrice(prev => ({ ...prev, [r.id]: Math.max(0, parseInt(e.target.value, 10) || 0) })) })),
+            h("td", null, money(r.net))
+          )))
+        )),
+        h("div", { style: { display: "flex", gap: 16, flexWrap: "wrap", marginTop: 18 } },
+          h("div", { className: "rn-stat" }, h("b", null, money(rentTotal)), h("span", null, "renting from Rently, ", calcDays, " days")),
+          h("div", { className: "rn-stat" }, h("b", null, money(buyTotal)), h("span", null, "buying new, minus resale")),
+          h("div", { className: "rn-stat" }, h("b", { style: { color: diff >= 0 ? "#1B7F4B" : "var(--magenta-dark)" } }, diff >= 0 ? ("Renting saves " + money(diff)) : ("Buying saves " + money(-diff))), h("span", null, "for the items ticked above"))
+        ),
+        h("p", { style: { fontSize: 12, color: "var(--ink-faint)", marginTop: 14, marginBottom: 0 } }, "Buy prices and resale value are your own estimates, editable above. Rently's prices are today's live prices.")
+      )
+    );
+  }
   function AboutView() {
     const team = [
       { i: "AB", n: "Ashish Bommera", r: "Team", d: "Leads product and the campus partnerships." },
@@ -3179,6 +3359,8 @@ function App() {
   else if (view === "contact") body = ContactView();
   else if (view === "about") body = AboutView();
   else if (view === "confirm") body = ConfirmHandoverView();
+  else if (view === "split") body = ExpenseSplitterView();
+  else if (view === "calculator") body = CalculatorView();
 
   return h("div", null,
     Header(),
@@ -3188,6 +3370,8 @@ function App() {
       h("span", null, "Live pilot build \u00b7 backed by a real database \u00b7 built for the Rently pilot"),
       h("div", { style: { display: "flex", gap: 16 } },
         !isStaffAccount && h("a", { href: "/blog/index.html" }, "Blog"),
+        !isStaffAccount && h("a", { href: "/calculator", onClick: e => { e.preventDefault(); goTo("calculator"); } }, "Rent vs. buy"),
+        !isStaffAccount && h("a", { href: "/split", onClick: e => { e.preventDefault(); goTo("split"); } }, "Split expenses"),
         h("a", { href: "/about", onClick: e => { e.preventDefault(); goTo("about"); } }, "About us"),
         h("a", { href: "/contact", onClick: e => { e.preventDefault(); goTo("contact"); } }, "Contact us"),
         h("a", { href: "/privacy", onClick: e => { e.preventDefault(); goTo("privacy"); } }, "Privacy"),
