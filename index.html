@@ -326,6 +326,9 @@
   .rn-status-completed { background: #E4E4E0; color: var(--ink-soft); }
   .rn-status-paid { background: #DCE7E0; color: #2C5E45; }
   .rn-status-unpaid { background: #F3E3C4; color: #8A6116; }
+  .rn-status-held { background: #F3E3C4; color: #8A6116; }
+  .rn-status-refunded { background: #DCE7E0; color: #2C5E45; }
+  .rn-status-withheld { background: var(--magenta-tint); color: var(--magenta-dark); }
   .rn-item-tags { display: flex; gap: 5px; flex-wrap: wrap; max-width: 260px; }
   .rn-item-tag { font-size: 11.5px; background: var(--cream-card); border-radius: 6px; padding: 3px 7px; color: var(--ink-soft); white-space: nowrap; }
   .rn-status-select { font-family: 'Inter'; font-size: 13px; padding: 7px 9px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--cream); }
@@ -536,6 +539,9 @@ const MOVE_PRICE = 300;
 // Illustrative "buying new" estimates for the rent-vs-buy calculator, editable by the student. Not live market data.
 const TYPICAL_BUY_PRICE = { mattress: 1200, table: 1800, lamp: 600, storage: 900, extension_board: 400, chair: 2200, wardrobe: 1500 };
 const DEFAULT_RESALE_PCT = 35;
+// Refundable security deposit per item, held at booking and released (or withheld for damage) at return.
+const ITEM_DEPOSIT = { mattress: 350, table: 550, lamp: 200, storage: 250, extension_board: 100, chair: 650, wardrobe: 450 };
+function depositForItems(items) { return items.reduce((s, id) => s + (ITEM_DEPOSIT[id] || 0), 0); }
 const SEMESTER_BASELINE_DAYS = 90; // prices are set for a standard 3-month semester; longer/shorter picks scale from here
 const UPI_ID = "ashish261105--3@okaxis";
 const LOW_STOCK = 30;
@@ -565,9 +571,9 @@ const TERMS_SECTIONS = [
   { h: "Changes & termination", p: "We may update these terms as the pilot evolves; continued use after an update means you accept the new terms. We may suspend accounts that violate acceptable use." },
 ];
 const DAMAGE_POLICY = [
-  { h: "What you pay at booking", p: "The price shown at checkout is the full rental cost for your chosen semester length. There's no separate deposit collected on top of it today." },
-  { h: "Normal wear", p: "Ordinary signs of use, like minor scuffs or faded fabric, are expected and never charged." },
-  { h: "Damage or loss", p: "Breakage, missing parts, or unreturned items are assessed at pickup and charged based on the item's listed rental value. We'll always tell you the amount and reason before asking for payment, never after the fact with no explanation." },
+  { h: "What you pay at booking", p: "You pay the rental price for your chosen semester length, plus a refundable security deposit per item. The deposit is held, not spent, and comes back to you when the item is returned in good condition." },
+  { h: "Normal wear", p: "Ordinary signs of use, like minor scuffs or faded fabric, are expected, never charged, and never taken from your deposit." },
+  { h: "Damage or loss", p: "Breakage, missing parts, or unreturned items are assessed at pickup and may be deducted from your deposit, up to its full amount. We'll always tell you the amount and reason before withholding anything, never after the fact with no explanation." },
 ];
 const TRUST_POINTS = [
   { icon: "shield", title: "Partner-backed", desc: "Every item comes through an established rental partner, not an anonymous seller on a group chat." },
@@ -1800,6 +1806,7 @@ function App() {
   const scaledBundlePrice = roundMoney(BUNDLE_PRICE * semScale);
   function scaledPriceOf(id) { return roundMoney(priceOf(id) * semScale); }
   const cartTotal = isBundle ? scaledBundlePrice : roundMoney(cartIds.reduce((s, id) => s + priceOf(id), 0) * semScale);
+  const cartDeposit = depositForItems(cartIds);
   const allItemsSum = roundMoney(Object.keys(ITEM_DEFS).reduce((s, id) => s + priceOf(id), 0) * semScale);
   const bundleSavings = Math.max(0, allItemsSum - scaledBundlePrice);
   const semesterLabel = formatDate(semStart) + " \u2013 " + formatDate(semEnd, true);
@@ -1990,7 +1997,7 @@ function App() {
         id, student_id: session.user.id, student_name: bookName.trim(),
         hostel_block: bookBlock, room_info: bookRoom.trim(), delivery_slot: deliverySlot,
         items: cartIds, semester_start: semStart, semester_end: semEnd, status: "Pending",
-        pickup_otp: otp,
+        pickup_otp: otp, deposit_amount: depositForItems(cartIds), deposit_status: "held",
       });
       error = res.error;
       if (!error || error.code !== "23505") break; // 23505 = duplicate booking id, try a fresh one
@@ -2014,6 +2021,12 @@ function App() {
   async function updateStatus(id, status) {
     const { error } = await db.from("bookings").update({ status }).eq("id", id);
     if (error) { alert("Couldn't update that booking: " + error.message); return; }
+    refreshAllBookings();
+  }
+  async function setDepositStatus(id, depositStatus) {
+    if (depositStatus === "withheld" && !confirm("Withhold this deposit? Only do this after telling the student why.")) return;
+    const { error } = await db.from("bookings").update({ deposit_status: depositStatus }).eq("id", id);
+    if (error) { alert("Couldn't update the deposit: " + error.message); return; }
     refreshAllBookings();
   }
   function confirmDelivery(booking) {
@@ -2303,6 +2316,8 @@ function App() {
               ? h("span", null, h("span", { style: { textDecoration: "line-through", color: "var(--ink-faint)", fontSize: 14, marginRight: 8 } }, money(allItemsSum)), h("b", null, money(cartTotal), "/sem"))
               : h("b", null, money(cartTotal), "/sem")
           ),
+          cartDeposit > 0 && h("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "var(--ink-soft)", marginTop: 4 } },
+            h("span", null, "+ Refundable deposit"), h("span", null, money(cartDeposit))),
           isBundle
             ? h("p", { style: { fontSize: 12.5, color: "var(--magenta-dark)", fontWeight: 600, marginTop: 8 } }, "Full-bundle rate applied. You saved ", money(bundleSavings), ".")
             : cartIds.length > 0 && h("div", { className: "rn-upsell" }, "Add the rest of the room for a flat rate.", h("button", { className: "rn-btn rn-btn-ghost", onClick: () => setCartIds(Object.keys(ITEM_DEFS)) }, "Add the full bundle for ", money(scaledBundlePrice))),
@@ -2345,6 +2360,8 @@ function App() {
             ? h("span", null, h("span", { style: { textDecoration: "line-through", color: "var(--ink-faint)", fontSize: 14, marginRight: 8 } }, money(allItemsSum)), h("b", null, money(cartTotal)))
             : h("b", null, money(cartTotal))
         ),
+        cartDeposit > 0 && h("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "var(--ink-soft)", marginTop: 4 } },
+          h("span", null, "+ Refundable deposit"), h("span", null, money(cartDeposit))),
         h("button", { className: "rn-link-btn", style: { marginTop: 10 }, onClick: () => goTo("build") }, "Add more items"),
         h("button", { className: "rn-link-btn", style: { marginTop: 10, marginLeft: 14 }, onClick: () => setPolicyOpen(true) }, "View wear & damage policy")
       )
@@ -2356,14 +2373,26 @@ function App() {
     const base = items.length === Object.keys(ITEM_DEFS).length ? BUNDLE_PRICE : items.reduce((s, id) => s + priceOf(id), 0);
     return roundMoney(base * scale);
   }
-  function PaymentInfo(id, amount, paymentStatus) {
+  function DepositNote(depositAmount, depositStatus) {
+    if (!depositAmount) return null;
+    const line = depositStatus === "refunded"
+      ? h("span", null, Icon("check", 12), " Your ", money(depositAmount), " deposit has been refunded.")
+      : depositStatus === "withheld"
+      ? h("span", null, "Your ", money(depositAmount), " deposit was withheld. ", h("a", { href: "/contact", style: { color: "var(--magenta-dark)" }, onClick: e => { e.preventDefault(); goTo("contact"); } }, "Contact us"), " if you have questions.")
+      : h("span", null, "Your ", money(depositAmount), " deposit is held and comes back once the item is returned in good condition.");
+    return h("p", { style: { margin: "8px 0 0", color: "var(--ink-soft)", fontSize: 12.5 } }, line);
+  }
+  function PaymentInfo(id, amount, paymentStatus, depositAmount, depositStatus) {
+    const deposit = depositAmount || 0;
     if (paymentStatus === "Paid") {
       return h("div", { className: "rn-acct-card", style: { marginTop: 20, textAlign: "center" } },
         h("h3", { style: { margin: "0 0 4px" } }, "Payment"),
-        h("p", { style: { margin: 0, color: "var(--ink-soft)", fontSize: 13.5 } }, Icon("check", 14), " Marked as paid, thanks!")
+        h("p", { style: { margin: 0, color: "var(--ink-soft)", fontSize: 13.5 } }, Icon("check", 14), " Marked as paid, thanks!"),
+        DepositNote(deposit, depositStatus)
       );
     }
-    const upiUri = "upi://pay?pa=" + encodeURIComponent(UPI_ID) + "&pn=" + encodeURIComponent("Rently") + "&am=" + amount + "&cu=INR&tn=" + encodeURIComponent(id);
+    const total = amount + deposit;
+    const upiUri = "upi://pay?pa=" + encodeURIComponent(UPI_ID) + "&pn=" + encodeURIComponent("Rently") + "&am=" + total + "&cu=INR&tn=" + encodeURIComponent(id);
     let qrUrl = null;
     if (window.qrcode) {
       try {
@@ -2374,7 +2403,8 @@ function App() {
       } catch (e) { console.error("QR generation failed:", e.message); }
     }
     return h("div", { className: "rn-acct-card", style: { marginTop: 20, textAlign: "center" } },
-      h("h3", { style: { margin: "0 0 4px" } }, "Pay ", money(amount), " via UPI"),
+      h("h3", { style: { margin: "0 0 4px" } }, "Pay ", money(total), " via UPI"),
+      deposit > 0 && h("p", { style: { margin: "0 0 10px", fontSize: 12.5, color: "var(--ink-soft)" } }, money(amount), " rental + ", money(deposit), " refundable deposit"),
       h("p", { style: { margin: "0 0 16px", fontSize: 13.5, color: "var(--ink-soft)" } }, "Scan with any UPI app, or pay directly to ", h("b", null, UPI_ID), ". We'll confirm once it's received."),
       qrUrl
         ? h("img", { src: qrUrl, alt: "UPI payment QR code", style: { width: 230, height: 230, margin: "0 auto 14px", display: "block" } })
@@ -2427,7 +2457,7 @@ function App() {
         h("div", { className: "rn-receipt-row" }, h("span", null, "Semester"), h("span", null, semesterLabel)),
         h("div", { className: "rn-receipt-row" }, h("span", null, "Delivery slot"), h("span", null, deliverySlot))
       ),
-      lastBooking && PaymentInfo(lastBooking.id, priceForItems(lastBooking.items, lastBooking.semester_start, lastBooking.semester_end), lastBooking.payment_status),
+      lastBooking && PaymentInfo(lastBooking.id, priceForItems(lastBooking.items, lastBooking.semester_start, lastBooking.semester_end), lastBooking.payment_status, lastBooking.deposit_amount, lastBooking.deposit_status),
       PickupCode(lastBooking),
       RevealSection(lastBooking),
       h("div", { style: { display: "flex", gap: 12, justifyContent: "center" } },
@@ -2450,7 +2480,7 @@ function App() {
         h("div", { className: "rn-dash-card " + (myStorage.length === 0 ? "muted" : "") }, ItemIcon("archive", 17), h("b", null, myStorage.length === 0 ? "Not started" : (myStorage[0].bag_size === "small" ? "Small bag" : "Trunk")), h("span", null, "Storage ", myStorage.length > 0 ? "\u00b7 " + myStorage[0].status : ""))
       ),
       myBookings.filter(b => (b.status === "Pending" || b.status === "Confirmed") && b.payment_status !== "Paid").map(b =>
-        h(React.Fragment, { key: b.id }, PaymentInfo(b.id, priceForItems(b.items, b.semester_start, b.semester_end), b.payment_status))
+        h(React.Fragment, { key: b.id }, PaymentInfo(b.id, priceForItems(b.items, b.semester_start, b.semester_end), b.payment_status, b.deposit_amount, b.deposit_status))
       ),
       myLatest && (myLatest.status === "Pending" || myLatest.status === "Confirmed") && RevealSection(myLatest),
       myLatest && (myLatest.status === "Pending" || myLatest.status === "Confirmed") && PickupCode(myLatest),
@@ -2459,13 +2489,14 @@ function App() {
         myBookings.length === 0
           ? h("div", { className: "rn-empty" }, Icon("clipboard", 34), h("p", null, "Nothing booked yet."), h("button", { className: "rn-btn rn-btn-primary", onClick: () => goTo("build") }, "Build my room"))
           : h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
-              h("thead", null, h("tr", null, h("th", null, "Booking"), h("th", null, "Items"), h("th", null, "Semester"), h("th", null, "Status"), h("th", null, "Payment"))),
+              h("thead", null, h("tr", null, h("th", null, "Booking"), h("th", null, "Items"), h("th", null, "Semester"), h("th", null, "Status"), h("th", null, "Payment"), h("th", null, "Deposit"))),
               h("tbody", null, myBookings.map(b => h("tr", { key: b.id },
                 h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, b.id)),
                 h("td", null, h("div", { className: "rn-item-tags" }, b.items.length === Object.keys(ITEM_DEFS).length ? h("span", { className: "rn-item-tag" }, "Full bundle") : b.items.map(iid => h("span", { key: iid, className: "rn-item-tag" }, ITEM_DEFS[iid] ? ITEM_DEFS[iid].name : iid)))),
                 h("td", null, formatDate(b.semester_start), " \u2013 ", formatDate(b.semester_end, true)),
                 h("td", null, StatusPill(b.status)),
-                h("td", null, StatusPill(b.payment_status))
+                h("td", null, StatusPill(b.payment_status)),
+                h("td", null, b.deposit_amount ? h(React.Fragment, null, money(b.deposit_amount), " ", StatusPill(b.deposit_status.charAt(0).toUpperCase() + b.deposit_status.slice(1))) : "\u2014")
               )))
             ))
       )
@@ -2723,14 +2754,21 @@ function App() {
       ),
       h("div", { className: "rn-admin-section" }, h("h3", null, "Bookings"),
         h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
-          h("thead", null, h("tr", null, h("th", null, "Booking"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Slot"), h("th", null, "Items"), h("th", null, "Semester"), h("th", null, "Status"), h("th", null, "Payment"))),
+          h("thead", null, h("tr", null, h("th", null, "Booking"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Slot"), h("th", null, "Items"), h("th", null, "Semester"), h("th", null, "Status"), h("th", null, "Payment"), h("th", null, "Deposit"))),
           h("tbody", null, bookings.map(b => h("tr", { key: b.id },
             h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, b.id)),
             h("td", null, b.student_name), h("td", null, b.hostel_block || "\u2014"), h("td", null, b.room_info), h("td", null, b.delivery_slot || "\u2014"),
             h("td", null, h("div", { className: "rn-item-tags" }, b.items.length === Object.keys(ITEM_DEFS).length ? h("span", { className: "rn-item-tag" }, "Full bundle") : b.items.map(iid => h("span", { key: iid, className: "rn-item-tag" }, ITEM_DEFS[iid] ? ITEM_DEFS[iid].name : iid)))),
             h("td", null, formatDate(b.semester_start), " \u2013 ", formatDate(b.semester_end, true)),
             h("td", null, h("select", { className: "rn-status-select", value: b.status, onChange: e => updateStatus(b.id, e.target.value) }, STATUSES.map(s => h("option", { key: s, value: s }, s)))),
-            h("td", null, b.payment_status === "Paid" ? StatusPill("Paid") : h("button", { className: "rn-btn rn-btn-ghost", onClick: () => markPaid("bookings", b.id) }, "Mark paid"))
+            h("td", null, b.payment_status === "Paid" ? StatusPill("Paid") : h("button", { className: "rn-btn rn-btn-ghost", onClick: () => markPaid("bookings", b.id) }, "Mark paid")),
+            h("td", null, !b.deposit_amount ? "\u2014" : h("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 } },
+              h("span", null, money(b.deposit_amount), " ", StatusPill(b.deposit_status.charAt(0).toUpperCase() + b.deposit_status.slice(1))),
+              b.deposit_status === "held" && h("div", { style: { display: "flex", gap: 6 } },
+                h("button", { className: "rn-btn rn-btn-ghost", style: { fontSize: 12, padding: "4px 8px" }, onClick: () => setDepositStatus(b.id, "refunded") }, "Refund"),
+                h("button", { className: "rn-btn rn-btn-ghost", style: { fontSize: 12, padding: "4px 8px" }, onClick: () => setDepositStatus(b.id, "withheld") }, "Withhold")
+              )
+            ))
           )))
         ))
       ),
