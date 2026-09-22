@@ -1,7 +1,7 @@
 {
-  "name": "Rently — set up your room without owning any of it",
+  "name": "Rently: set up your room without owning any of it",
   "short_name": "Rently",
-  "description": "Book a hostel-compliant room-setup bundle, storage, and moves — delivered and collected on campus.",
+  "description": "Book a hostel-compliant room-setup bundle, storage, and moves, delivered and collected on campus.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

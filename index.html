@@ -2629,7 +2629,7 @@ function App() {
           h("thead", null, h("tr", null, h("th", null, "Request"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Item"), h("th", null, "Drop-off"), h("th", null, "Pickup"), h("th", null, "Status"), h("th", null, "Payment"))),
           h("tbody", null, storageBookings.map(s => h("tr", { key: s.id },
             h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, s.id)),
-            h("td", null, s.student_name), h("td", null, s.hostel_block || "—"), h("td", null, s.room_info),
+            h("td", null, s.student_name), h("td", null, s.hostel_block || "-"), h("td", null, s.room_info),
             h("td", null, s.bag_size === "small" ? "Small bag" : "Trunk"),
             h("td", null, formatDate(s.drop_off_date, true)), h("td", null, formatDate(s.pickup_date, true)),
             h("td", null, h("select", { className: "rn-status-select", value: s.status, onChange: e => updateStorageStatus(s.id, e.target.value) }, STORAGE_STATUSES.map(st => h("option", { key: st, value: st }, st)))),
@@ -2664,7 +2664,7 @@ function App() {
         h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
           h("thead", null, h("tr", null, h("th", null, "Author"), h("th", null, "Block"), h("th", null, "Quote"), h("th", null))),
           h("tbody", null, testimonials.map(t => h("tr", { key: t.id },
-            h("td", null, t.author_label), h("td", null, t.hostel_block || "—"), h("td", null, t.quote),
+            h("td", null, t.author_label), h("td", null, t.hostel_block || "-"), h("td", null, t.quote),
             h("td", null, h("button", { className: "rn-btn rn-btn-ghost", onClick: () => deleteTestimonial(t.id) }, "Delete"))
           )))
         ))
@@ -2676,7 +2676,7 @@ function App() {
           h("thead", null, h("tr", null, h("th", null, "Time"), h("th", null, "Type"), h("th", null, "Ref"), h("th", null, "Sent as"), h("th", null, "Result"))),
           h("tbody", null, waLog.map(m => h("tr", { key: m.id },
             h("td", null, new Date(m.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })),
-            h("td", null, m.kind), h("td", null, m.ref_id || "—"), h("td", null, m.via || "—"),
+            h("td", null, m.kind), h("td", null, m.ref_id || "-"), h("td", null, m.via || "-"),
             h("td", null, m.ok ? (m.delivery_status || "sent") : "failed (" + (m.error_code || "error") + ")")
           )))
         ))
@@ -2699,7 +2699,7 @@ function App() {
         h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
           h("thead", null, h("tr", null, h("th", null, "Email"), h("th", null, "Name"), h("th", null, "Role"))),
           h("tbody", null, allProfiles.map(p => h("tr", { key: p.id },
-            h("td", null, p.email || "—"), h("td", null, p.full_name || "—"),
+            h("td", null, p.email || "-"), h("td", null, p.full_name || "-"),
             h("td", null, p.id === profile.id
               ? h("span", { style: { color: "var(--ink-faint)" } }, p.role, " (you)")
               : h("select", { className: "rn-status-select", value: p.role, onChange: e => setUserRole(p.id, e.target.value) },
@@ -2723,7 +2723,7 @@ function App() {
             h("thead", null, h("tr", null, h("th", null, "Booking"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Slot"), h("th", null, "Items"), h("th", null, "Status"), h("th", null))),
             h("tbody", null, queue.map(b => h("tr", { key: b.id },
               h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, b.id)),
-              h("td", null, b.student_name), h("td", null, b.hostel_block || "—"), h("td", null, b.room_info), h("td", null, b.delivery_slot || "—"),
+              h("td", null, b.student_name), h("td", null, b.hostel_block || "-"), h("td", null, b.room_info), h("td", null, b.delivery_slot || "-"),
               h("td", null, h("div", { className: "rn-item-tags" }, b.items.length === Object.keys(ITEM_DEFS).length ? h("span", { className: "rn-item-tag" }, "Full bundle") : b.items.map(iid => h("span", { key: iid, className: "rn-item-tag" }, ITEM_DEFS[iid] ? ITEM_DEFS[iid].name : iid)))),
               h("td", null, StatusPill(b.status)),
               h("td", null, b.status === "Confirmed"
@@ -2745,7 +2745,7 @@ function App() {
           h("thead", null, h("tr", null, h("th", null, "Request"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Item"), h("th", null, "Status"), h("th", null))),
           h("tbody", null, storageQueue.map(s => h("tr", { key: s.id },
             h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, s.id)),
-            h("td", null, s.student_name), h("td", null, s.hostel_block || "—"), h("td", null, s.room_info),
+            h("td", null, s.student_name), h("td", null, s.hostel_block || "-"), h("td", null, s.room_info),
             h("td", null, s.bag_size === "small" ? "Small bag" : "Trunk"),
             h("td", null, StatusPill(s.status)),
             h("td", null, s.status === "Requested"
@@ -2760,7 +2760,7 @@ function App() {
           h("thead", null, h("tr", null, h("th", null, "Request"), h("th", null, "Student"), h("th", null, "Block"), h("th", null, "Room"), h("th", null, "Type"), h("th", null, "Date"), h("th", null, "Status"), h("th", null))),
           h("tbody", null, moveQueue.map(m => h("tr", { key: m.id },
             h("td", null, h("b", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 15 } }, m.id)),
-            h("td", null, m.student_name), h("td", null, m.hostel_block || "—"), h("td", null, m.room_info),
+            h("td", null, m.student_name), h("td", null, m.hostel_block || "-"), h("td", null, m.room_info),
             h("td", null, m.move_type === "move-in" ? "Move-in" : "Move-out"),
             h("td", null, formatDate(m.move_date, true)),
             h("td", null, StatusPill(m.status)),
@@ -2782,7 +2782,7 @@ function App() {
           const demand = itemDemand[it.item_id] || 0;
           const short = demand > it.stock;
           return h("tr", { key: it.item_id },
-            h("td", null, it.name), h("td", null, it.category || "—"),
+            h("td", null, it.name), h("td", null, it.category || "-"),
             h("td", null, it.stock), h("td", null, demand),
             h("td", null, short ? h("span", { className: "rn-chip-low" }, Icon("alert", 13), " Short by ", demand - it.stock) : h("span", { style: { color: "var(--ink-soft)" } }, "OK"))
           );
@@ -2867,7 +2867,7 @@ function App() {
   }
   function AboutView() {
     const team = [
-      { i: "AB", n: "Ashish Bommera", r: "Founder", d: "Started Rently after seeing his own hostel block buy and bin the same room-setup items every semester. Leads product and the campus partnerships." },
+      { i: "AB", n: "Ashish Bommera", r: "Team", d: "Leads product and the campus partnerships." },
       { i: "AT", n: "Animesh Tiwari", r: "Team", d: "Works on the catalogue, pricing and the operations side of the platform." },
       { i: "AP", n: "Aditya Puranik", r: "Team", d: "Works on the storage and moves flows and testing across roles." },
       { i: "SG", n: "Sai Krishna Gopal", r: "Team", d: "Works on Circles and the community side of the product." },
@@ -2887,7 +2887,7 @@ function App() {
       h("div", { className: "rn-acct-card", style: { marginTop: 24, maxWidth: 720 } },
         h("h3", null, "Why we built this"),
         h("p", { style: { margin: 0, fontSize: 14.5, color: "var(--ink-soft)", lineHeight: 1.65 } },
-          "Every semester, students moving into hostel rooms buy the same short-lived items — a mattress topper, a lamp, a table, a chair — use them for a few months, then discard them, sell them at a loss, or carry them home. The next batch repeats the same purchase from scratch. We started Rently on one campus to turn that cycle into a single booking: pick what you need, we deliver it, we collect it, and it goes back out to the next student instead of a landfill."
+          "Every semester, students moving into hostel rooms buy the same short-lived items, a mattress topper, a lamp, a table, a chair, use them for a few months, then discard them, sell them at a loss, or carry them home. The next batch repeats the same purchase from scratch. We started Rently on one campus to turn that cycle into a single booking: pick what you need, we deliver it, we collect it, and it goes back out to the next student instead of a landfill."
         )
       ),
       h("h3", { style: { marginTop: 28, marginBottom: 4, fontSize: 16 } }, "What we care about"),
