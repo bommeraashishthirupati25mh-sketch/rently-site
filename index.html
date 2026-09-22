@@ -2777,8 +2777,8 @@ function App() {
                 h("td", null, formatDate(r.created_at.slice(0, 10), true)),
                 h("td", null, ITEM_DEFS[r.item_id] ? ITEM_DEFS[r.item_id].name : r.item_id),
                 h("td", null, r.quantity),
-                h("td", null, r.available_by ? formatDate(r.available_by, true) : "—"),
-                h("td", null, r.note || "—"),
+                h("td", null, r.available_by ? formatDate(r.available_by, true) : "-"),
+                h("td", null, r.note || "-"),
                 h("td", null, StatusPill(r.status.charAt(0).toUpperCase() + r.status.slice(1))),
                 h("td", null, r.status === "pending" ? h("div", { style: { display: "flex", gap: 6 } },
                   h("button", { className: "rn-btn rn-btn-dark", onClick: () => respondSupplyRequest(r.id, "accepted") }, "Accept"),
@@ -2991,7 +2991,7 @@ function App() {
             h("td", null, formatDate(r.created_at.slice(0, 10), true)),
             h("td", null, ITEM_DEFS[r.item_id] ? ITEM_DEFS[r.item_id].name : r.item_id),
             h("td", null, r.quantity),
-            h("td", null, r.available_by ? formatDate(r.available_by, true) : "—"),
+            h("td", null, r.available_by ? formatDate(r.available_by, true) : "-"),
             h("td", null, StatusPill(r.status.charAt(0).toUpperCase() + r.status.slice(1)))
           )))
         ))
@@ -3236,6 +3236,14 @@ function App() {
           "Every semester, students moving into hostel rooms buy the same short-lived items, a mattress topper, a lamp, a table, a chair, use them for a few months, then discard them, sell them at a loss, or carry them home. The next batch repeats the same purchase from scratch. We started Rently on one campus to turn that cycle into a single booking: pick what you need, we deliver it, we collect it, and it goes back out to the next student instead of a landfill."
         )
       ),
+      h("h3", { style: { marginTop: 28, marginBottom: 4, fontSize: 16 } }, "How Rently makes money"),
+      h("p", { style: { fontSize: 14.5, color: "var(--ink-soft)", maxWidth: 720, marginTop: 0 } }, "No middlemen, no ads, no selling your data. Rently earns money the plain way: you pay for what you book, and that payment goes straight to running the service."),
+      h("div", { className: "rn-price-row" },
+        h("div", { className: "rn-price-card" }, h("b", null, money(BUNDLE_PRICE)), h("span", null, "Full room-setup bundle, per semester, scaled to your own move-in and move-out dates")),
+        h("div", { className: "rn-price-card" }, h("b", null, money(500), " – ", money(800)), h("span", null, "Semester storage, small bag or trunk")),
+        h("div", { className: "rn-price-card" }, h("b", null, money(MOVE_PRICE)), h("span", null, "A move-in or move-out trip"))
+      ),
+      h("p", { style: { fontSize: 13.5, color: "var(--ink-soft)", maxWidth: 720 } }, "You pay by UPI, and an admin confirms it by hand after checking the bank account. That's on purpose: there's no payment gateway, so there are no gateway fees on top of your price. Right now there's no rental brand or supplier taking a cut, so every rupee funds buying items, deliveries and running the pilot on this campus. As Rently grows, a supply partner may come on board to stock items at scale, which would change who owns the inventory but not how you pay."),
       h("h3", { style: { marginTop: 28, marginBottom: 4, fontSize: 16 } }, "What we care about"),
       h("div", { className: "rn-about-values" },
         values.map(v => h("div", { key: v.h, className: "rn-about-card" }, h("h3", null, v.h), h("p", null, v.p)))
