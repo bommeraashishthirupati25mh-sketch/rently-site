@@ -2255,15 +2255,15 @@ function App() {
         const qr = qrcode(0, "M");
         qr.addData(upiUri);
         qr.make();
-        qrUrl = qr.createDataURL(6, 4);
+        qrUrl = qr.createDataURL(9, 4);
       } catch (e) { console.error("QR generation failed:", e.message); }
     }
     return h("div", { className: "rn-acct-card", style: { marginTop: 20, textAlign: "center" } },
       h("h3", { style: { margin: "0 0 4px" } }, "Pay ", money(amount), " via UPI"),
       h("p", { style: { margin: "0 0 16px", fontSize: 13.5, color: "var(--ink-soft)" } }, "Scan with any UPI app, or pay directly to ", h("b", null, UPI_ID), ". We'll confirm once it's received."),
       qrUrl
-        ? h("img", { src: qrUrl, alt: "UPI payment QR code", style: { width: 160, height: 160, margin: "0 auto 14px", display: "block", imageRendering: "pixelated" } })
-        : h("div", { style: { width: 160, height: 160, margin: "0 auto 14px", background: "var(--cream)", borderRadius: 12 } }),
+        ? h("img", { src: qrUrl, alt: "UPI payment QR code", style: { width: 210, height: 210, margin: "0 auto 14px", display: "block" } })
+        : h("div", { style: { width: 210, height: 210, margin: "0 auto 14px", background: "var(--cream)", borderRadius: 12 } }),
       h("div", { style: { fontFamily: "monospace", fontSize: 15 } }, UPI_ID)
     );
   }
@@ -2275,7 +2275,7 @@ function App() {
         const qr = qrcode(0, "M");
         qr.addData(window.location.origin + "/confirm?id=" + encodeURIComponent(booking.id) + "&otp=" + encodeURIComponent(booking.pickup_otp));
         qr.make();
-        qrUrl = qr.createDataURL(6, 4);
+        qrUrl = qr.createDataURL(9, 4);
       } catch (e) { console.error("QR generation failed:", e.message); }
     }
     return h("div", { className: "rn-acct-card rn-shine-host", style: { marginTop: 20, textAlign: "center" } },
@@ -2283,8 +2283,8 @@ function App() {
       h("h3", { style: { margin: "0 0 4px" } }, "Pickup code"),
       h("p", { style: { margin: "0 0 16px", fontSize: 13.5, color: "var(--ink-soft)" } }, "Show this to the delivery crew on move-in day. Scanning the QR opens a one-tap confirm screen for them, or they can type the code below."),
       qrUrl
-        ? h("img", { src: qrUrl, alt: "Pickup QR code", style: { width: 160, height: 160, margin: "0 auto 14px", display: "block", imageRendering: "pixelated" } })
-        : h("div", { style: { width: 160, height: 160, margin: "0 auto 14px", background: "var(--cream)", borderRadius: 12 } }),
+        ? h("img", { src: qrUrl, alt: "Pickup QR code", style: { width: 210, height: 210, margin: "0 auto 14px", display: "block" } })
+        : h("div", { style: { width: 210, height: 210, margin: "0 auto 14px", background: "var(--cream)", borderRadius: 12 } }),
       h("div", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 32, letterSpacing: 4 } }, booking.pickup_otp),
       h("a", { className: "rn-btn rn-btn-ghost", style: { marginTop: 14, display: "inline-flex", gap: 8, textDecoration: "none" }, target: "_blank", rel: "noopener",
         href: "https://wa.me/?text=" + encodeURIComponent("Rently booking " + booking.id + "\nPickup code: " + booking.pickup_otp + "\nShow this to the delivery crew on move-in day.\nhttps://rently-site.rently-campus.workers.dev/") },
