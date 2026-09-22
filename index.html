@@ -3173,10 +3173,11 @@ function App() {
     let rentTotal = 0, buyTotal = 0;
     const rows = ids.map(id => {
       const rent = roundMoney((priceOf(id) || 0) * (calcDays / SEMESTER_BASELINE_DAYS));
-      const buy = calcBuyPrice[id] || 0;
-      const net = Math.round(buy * (1 - calcResalePct / 100));
+      const buyRaw = calcBuyPrice[id] !== undefined ? calcBuyPrice[id] : "";
+      const buyNum = parseInt(buyRaw, 10) || 0;
+      const net = Math.round(buyNum * (1 - (parseInt(calcResalePct, 10) || 0) / 100));
       if (calcSelected.has(id)) { rentTotal += rent; buyTotal += net; }
-      return { id, rent, buy, net };
+      return { id, rent, buy: buyRaw, net };
     });
     const diff = buyTotal - rentTotal;
     return h(React.Fragment, null,
@@ -3187,9 +3188,9 @@ function App() {
       h("div", { className: "rn-acct-card", style: { marginTop: 20 } },
         h("div", { style: { display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 14 } },
           h("div", { className: "rn-field", style: { marginBottom: 0, width: 160 } }, h("label", null, "How many days?"),
-            h("input", { type: "number", min: 1, max: 365, value: calcDays, onChange: e => setCalcDays(Math.max(1, parseInt(e.target.value, 10) || 1)) })),
+            h("input", { type: "number", min: 1, max: 365, value: calcDays, onChange: e => setCalcDays(e.target.value.replace(/[^0-9]/g, "")) })),
           h("div", { className: "rn-field", style: { marginBottom: 0, width: 220 } }, h("label", null, "Expected resale value when you leave (%)"),
-            h("input", { type: "number", min: 0, max: 90, value: calcResalePct, onChange: e => setCalcResalePct(Math.max(0, Math.min(90, parseInt(e.target.value, 10) || 0))) }))
+            h("input", { type: "number", min: 0, max: 90, value: calcResalePct, onChange: e => setCalcResalePct(e.target.value.replace(/[^0-9]/g, "")) }))
         ),
         h("div", { className: "rn-table-wrap rn-calc-table" }, h("table", { className: "rn-table" },
           h("thead", null, h("tr", null, h("th", null), h("th", null, "Item"), h("th", null, "Rently price for ", calcDays, " days"), h("th", null, "Typical buy price"), h("th", null, "Net cost if you buy"))),
@@ -3197,7 +3198,7 @@ function App() {
             h("td", null, h("input", { type: "checkbox", checked: calcSelected.has(r.id), onChange: () => toggleCalcItem(r.id) })),
             h("td", null, ITEM_DEFS[r.id].name),
             h("td", null, money(r.rent)),
-            h("td", null, h("input", { type: "number", min: 0, value: r.buy, onChange: e => setCalcBuyPrice(prev => ({ ...prev, [r.id]: Math.max(0, parseInt(e.target.value, 10) || 0) })) })),
+            h("td", null, h("input", { type: "number", min: 0, value: r.buy, onChange: e => setCalcBuyPrice(prev => ({ ...prev, [r.id]: e.target.value.replace(/[^0-9]/g, "") })) })),
             h("td", null, money(r.net))
           )))
         )),
