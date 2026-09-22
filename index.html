@@ -604,7 +604,7 @@ const ADVISOR_EXAMPLES = [
   "Just here for a short exchange semester, keep it minimal",
 ];
 const DELIVERY_STEPS = ["Students book", "Rently aggregates demand", "Partner prepares inventory", "One campus delivery", "Hostel blocks receive orders"];
-const VIEW_PATHS = { home: "/", build: "/build", circles: "/circles", storage: "/storage", moves: "/moves", wishlist: "/wishlist", privacy: "/privacy", terms: "/terms", contact: "/contact", about: "/about" };
+const VIEW_PATHS = { home: "/", build: "/build", circles: "/circles", storage: "/storage", moves: "/moves", wishlist: "/wishlist", privacy: "/privacy", terms: "/terms", contact: "/contact", about: "/about", confirm: "/confirm" };
 const PATH_VIEWS = Object.fromEntries(Object.entries(VIEW_PATHS).filter(([v]) => v !== "home").map(([v, p]) => [p, v]));
 const CIRCLES_FEED = [
   { id: "wifi-maintenance", icon: "clipboard", kind: "Announcement", title: "Hostel Wi-Fi maintenance window", meta: "Today \u00b7 9\u201311 PM" },
@@ -1281,6 +1281,35 @@ function App() {
   const [contactNote, setContactNote] = useState("");
   const [contactDone, setContactDone] = useState(false);
   const [contactMsgs, setContactMsgs] = useState([]);
+  const [confirmRow, setConfirmRow] = useState(undefined);
+  const [confirmMsg, setConfirmMsg] = useState("");
+  const [confirmDone, setConfirmDone] = useState(false);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  useEffect(() => {
+    if (view !== "confirm" || !authReady || !session) return;
+    const isStaff = profile && (profile.role === "admin" || profile.role === "transporter");
+    if (!isStaff) return;
+    const id = new URLSearchParams(window.location.search).get("id");
+    if (!id) { setConfirmMsg("This link is missing a booking id."); setConfirmRow(null); return; }
+    setConfirmRow(undefined); setConfirmMsg("");
+    db.from("bookings").select("*").eq("id", id).single().then(({ data, error }) => {
+      if (error || !data) { setConfirmRow(null); setConfirmMsg("We couldn't find that booking."); return; }
+      setConfirmRow(data);
+    });
+  }, [view, authReady, session, profile]);
+  async function handleConfirmHandover() {
+    if (!confirmRow) return;
+    const otp = new URLSearchParams(window.location.search).get("otp") || "";
+    if (confirmRow.pickup_otp !== otp) { setConfirmMsg("This code doesn't match this booking's pickup code."); return; }
+    if (confirmRow.status === "Delivered" || confirmRow.status === "Returned") { setConfirmDone(true); return; }
+    setConfirmBusy(true); setConfirmMsg("");
+    const { error } = await db.from("bookings").update({ status: "Delivered" }).eq("id", confirmRow.id);
+    setConfirmBusy(false);
+    if (error) { setConfirmMsg("Couldn't confirm: " + error.message); return; }
+    setConfirmRow(prev => ({ ...prev, status: "Delivered" }));
+    setConfirmDone(true);
+    refreshAllBookings();
+  }
   const [waLog, setWaLog] = useState([]);
   const [dropOffDate, setDropOffDate] = useState(() => addDaysISO(30));
   const [pickupDate, setPickupDate] = useState(() => addDaysISO(66));
@@ -2244,7 +2273,7 @@ function App() {
     if (window.qrcode) {
       try {
         const qr = qrcode(0, "M");
-        qr.addData(booking.id + ":" + booking.pickup_otp);
+        qr.addData(window.location.origin + "/confirm?id=" + encodeURIComponent(booking.id) + "&otp=" + encodeURIComponent(booking.pickup_otp));
         qr.make();
         qrUrl = qr.createDataURL(6, 4);
       } catch (e) { console.error("QR generation failed:", e.message); }
@@ -2252,7 +2281,7 @@ function App() {
     return h("div", { className: "rn-acct-card rn-shine-host", style: { marginTop: 20, textAlign: "center" } },
       h(ShineBorder, { borderWidth: 2, duration: 10, shineColor: ["#D6336C", "#152E29"] }),
       h("h3", { style: { margin: "0 0 4px" } }, "Pickup code"),
-      h("p", { style: { margin: "0 0 16px", fontSize: 13.5, color: "var(--ink-soft)" } }, "Show this to the delivery crew on move-in day. It's how they confirm the handover is really you."),
+      h("p", { style: { margin: "0 0 16px", fontSize: 13.5, color: "var(--ink-soft)" } }, "Show this to the delivery crew on move-in day. Scanning the QR opens a one-tap confirm screen for them, or they can type the code below."),
       qrUrl
         ? h("img", { src: qrUrl, alt: "Pickup QR code", style: { width: 160, height: 160, margin: "0 auto 14px", display: "block", imageRendering: "pixelated" } })
         : h("div", { style: { width: 160, height: 160, margin: "0 auto 14px", background: "var(--cream)", borderRadius: 12 } }),
@@ -2865,6 +2894,52 @@ function App() {
     if (error) { setContactNote("Couldn't send your message: " + error.message + ". Please try again in a moment."); return; }
     setContactDone(true); setContactText("");
   }
+  function ConfirmHandoverView() {
+    if (!authReady) return h("div", { className: "rn-loading" }, "Loading…");
+    if (!session) {
+      return h("div", { className: "rn-auth-wrap" },
+        h("h1", { className: "rn-display" }, "Log in to confirm this handover"),
+        h("p", null, "This is a delivery crew link. Log in with your crew or admin account, then reopen it."),
+        AuthForm({})
+      );
+    }
+    const isStaff = profile && (profile.role === "admin" || profile.role === "transporter");
+    if (!isStaff) {
+      return h("div", { className: "rn-simple-hero" },
+        h("h1", { className: "rn-display" }, "Staff link"),
+        h("p", null, "Only an admin or logistics crew account can confirm a handover from this link.")
+      );
+    }
+    if (confirmDone) {
+      return h("div", { className: "rn-confirm-wrap" },
+        h("div", { className: "rn-confirm-icon" }, Icon("check", 30)),
+        h("h1", { className: "rn-display" }, "Pickup received"),
+        h("p", null, confirmRow ? (confirmRow.student_name + "'s booking " + confirmRow.id + " is now marked Delivered.") : "This booking is marked Delivered."),
+        h("button", { className: "rn-btn rn-btn-dark", onClick: () => goTo("transport") }, "Back to queue")
+      );
+    }
+    if (confirmRow === undefined) return h("div", { className: "rn-loading" }, "Looking up this booking…");
+    if (confirmRow === null) {
+      return h("div", { className: "rn-simple-hero" },
+        h("h1", { className: "rn-display" }, "Can't confirm this"),
+        h("p", null, confirmMsg || "This link isn't valid.")
+      );
+    }
+    const otp = new URLSearchParams(window.location.search).get("otp") || "";
+    const matches = confirmRow.pickup_otp === otp;
+    return h("div", { className: "rn-confirm-wrap" },
+      h("h1", { className: "rn-display" }, "Confirm handover"),
+      h("div", { className: "rn-receipt" },
+        h("div", { className: "rn-receipt-row" }, h("span", null, "Booking"), h("b", null, confirmRow.id)),
+        h("div", { className: "rn-receipt-row" }, h("span", null, "Student"), h("span", null, confirmRow.student_name)),
+        h("div", { className: "rn-receipt-row" }, h("span", null, "Room"), h("span", null, (confirmRow.hostel_block || "") + " " + confirmRow.room_info)),
+        h("div", { className: "rn-receipt-row" }, h("span", null, "Status"), StatusPill(confirmRow.status))
+      ),
+      !matches && h("p", { className: "rn-note", style: { color: "var(--magenta-dark)" } }, "This code doesn't match this booking's pickup code."),
+      matches && confirmMsg && h("p", { className: "rn-note", style: { color: "var(--magenta-dark)" } }, confirmMsg),
+      h("button", { className: "rn-btn rn-btn-primary", style: { width: "100%", justifyContent: "center" }, disabled: !matches || confirmBusy, onClick: handleConfirmHandover }, confirmBusy ? "Confirming…" : "Confirm handover", Icon("arrowRight", 16))
+    );
+  }
   function AboutView() {
     const team = [
       { i: "AB", n: "Ashish Bommera", r: "Team", d: "Leads product and the campus partnerships." },
@@ -3013,6 +3088,7 @@ function App() {
   else if (view === "terms") body = TermsView();
   else if (view === "contact") body = ContactView();
   else if (view === "about") body = AboutView();
+  else if (view === "confirm") body = ConfirmHandoverView();
 
   return h("div", null,
     Header(),
