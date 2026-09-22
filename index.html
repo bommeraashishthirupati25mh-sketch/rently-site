@@ -1289,7 +1289,8 @@ function App() {
     if (view !== "confirm" || !authReady || !session) return;
     const isStaff = profile && (profile.role === "admin" || profile.role === "transporter");
     if (!isStaff) return;
-    const id = new URLSearchParams(window.location.search).get("id");
+    const qs = new URLSearchParams(window.location.search);
+    const id = qs.get("i") || qs.get("id");
     if (!id) { setConfirmMsg("This link is missing a booking id."); setConfirmRow(null); return; }
     setConfirmRow(undefined); setConfirmMsg("");
     db.from("bookings").select("*").eq("id", id).single().then(({ data, error }) => {
@@ -1299,7 +1300,8 @@ function App() {
   }, [view, authReady, session, profile]);
   async function handleConfirmHandover() {
     if (!confirmRow) return;
-    const otp = new URLSearchParams(window.location.search).get("otp") || "";
+    const qs = new URLSearchParams(window.location.search);
+    const otp = qs.get("o") || qs.get("otp") || "";
     if (confirmRow.pickup_otp !== otp) { setConfirmMsg("This code doesn't match this booking's pickup code."); return; }
     if (confirmRow.status === "Delivered" || confirmRow.status === "Returned") { setConfirmDone(true); return; }
     setConfirmBusy(true); setConfirmMsg("");
@@ -2252,18 +2254,18 @@ function App() {
     let qrUrl = null;
     if (window.qrcode) {
       try {
-        const qr = qrcode(0, "M");
+        const qr = qrcode(0, "L");
         qr.addData(upiUri);
         qr.make();
-        qrUrl = qr.createDataURL(9, 4);
+        qrUrl = qr.createDataURL(10, 4);
       } catch (e) { console.error("QR generation failed:", e.message); }
     }
     return h("div", { className: "rn-acct-card", style: { marginTop: 20, textAlign: "center" } },
       h("h3", { style: { margin: "0 0 4px" } }, "Pay ", money(amount), " via UPI"),
       h("p", { style: { margin: "0 0 16px", fontSize: 13.5, color: "var(--ink-soft)" } }, "Scan with any UPI app, or pay directly to ", h("b", null, UPI_ID), ". We'll confirm once it's received."),
       qrUrl
-        ? h("img", { src: qrUrl, alt: "UPI payment QR code", style: { width: 210, height: 210, margin: "0 auto 14px", display: "block" } })
-        : h("div", { style: { width: 210, height: 210, margin: "0 auto 14px", background: "var(--cream)", borderRadius: 12 } }),
+        ? h("img", { src: qrUrl, alt: "UPI payment QR code", style: { width: 230, height: 230, margin: "0 auto 14px", display: "block" } })
+        : h("div", { style: { width: 230, height: 230, margin: "0 auto 14px", background: "var(--cream)", borderRadius: 12 } }),
       h("div", { style: { fontFamily: "monospace", fontSize: 15 } }, UPI_ID)
     );
   }
@@ -2272,10 +2274,10 @@ function App() {
     let qrUrl = null;
     if (window.qrcode) {
       try {
-        const qr = qrcode(0, "M");
-        qr.addData(window.location.origin + "/confirm?id=" + encodeURIComponent(booking.id) + "&otp=" + encodeURIComponent(booking.pickup_otp));
+        const qr = qrcode(0, "L");
+        qr.addData(window.location.origin + "/confirm?i=" + encodeURIComponent(booking.id) + "&o=" + encodeURIComponent(booking.pickup_otp));
         qr.make();
-        qrUrl = qr.createDataURL(9, 4);
+        qrUrl = qr.createDataURL(10, 4);
       } catch (e) { console.error("QR generation failed:", e.message); }
     }
     return h("div", { className: "rn-acct-card rn-shine-host", style: { marginTop: 20, textAlign: "center" } },
@@ -2283,8 +2285,8 @@ function App() {
       h("h3", { style: { margin: "0 0 4px" } }, "Pickup code"),
       h("p", { style: { margin: "0 0 16px", fontSize: 13.5, color: "var(--ink-soft)" } }, "Show this to the delivery crew on move-in day. Scanning the QR opens a one-tap confirm screen for them, or they can type the code below."),
       qrUrl
-        ? h("img", { src: qrUrl, alt: "Pickup QR code", style: { width: 210, height: 210, margin: "0 auto 14px", display: "block" } })
-        : h("div", { style: { width: 210, height: 210, margin: "0 auto 14px", background: "var(--cream)", borderRadius: 12 } }),
+        ? h("img", { src: qrUrl, alt: "Pickup QR code", style: { width: 230, height: 230, margin: "0 auto 14px", display: "block" } })
+        : h("div", { style: { width: 230, height: 230, margin: "0 auto 14px", background: "var(--cream)", borderRadius: 12 } }),
       h("div", { style: { fontFamily: "'Big Shoulders Display'", fontSize: 32, letterSpacing: 4 } }, booking.pickup_otp),
       h("a", { className: "rn-btn rn-btn-ghost", style: { marginTop: 14, display: "inline-flex", gap: 8, textDecoration: "none" }, target: "_blank", rel: "noopener",
         href: "https://wa.me/?text=" + encodeURIComponent("Rently booking " + booking.id + "\nPickup code: " + booking.pickup_otp + "\nShow this to the delivery crew on move-in day.\nhttps://rently-site.rently-campus.workers.dev/") },
@@ -2925,7 +2927,8 @@ function App() {
         h("p", null, confirmMsg || "This link isn't valid.")
       );
     }
-    const otp = new URLSearchParams(window.location.search).get("otp") || "";
+    const qsView = new URLSearchParams(window.location.search);
+    const otp = qsView.get("o") || qsView.get("otp") || "";
     const matches = confirmRow.pickup_otp === otp;
     return h("div", { className: "rn-confirm-wrap" },
       h("h1", { className: "rn-display" }, "Confirm handover"),
