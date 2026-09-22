@@ -1281,6 +1281,12 @@ function App() {
   const [contactNote, setContactNote] = useState("");
   const [contactDone, setContactDone] = useState(false);
   const [contactMsgs, setContactMsgs] = useState([]);
+  const [supplyRequests, setSupplyRequests] = useState([]);
+  const [supplyItem, setSupplyItem] = useState("");
+  const [supplyQty, setSupplyQty] = useState("");
+  const [supplyDate, setSupplyDate] = useState("");
+  const [supplyNote, setSupplyNote] = useState("");
+  const [supplyMsg, setSupplyMsg] = useState("");
   const [confirmRow, setConfirmRow] = useState(undefined);
   const [confirmMsg, setConfirmMsg] = useState("");
   const [confirmDone, setConfirmDone] = useState(false);
@@ -1411,9 +1417,9 @@ function App() {
         start = addDaysISO(7); end = addDaysISO(7 + len); setSemRolled(true);
       } else setSemRolled(false);
       setSemStart(start); setSemEnd(end);
-      if (profile.role === "admin") { refreshAllBookings(); refreshInventory(); refreshAllStorage(); refreshAllMoves(); refreshAllProfiles(); refreshContact(); refreshWaLog(); }
+      if (profile.role === "admin") { refreshAllBookings(); refreshInventory(); refreshAllStorage(); refreshAllMoves(); refreshAllProfiles(); refreshContact(); refreshWaLog(); refreshCirclePosts(); refreshSupplyRequests(); }
       else if (profile.role === "transporter") { refreshAllBookings(); refreshAllStorage(); refreshAllMoves(); }
-      else if (profile.role === "partner") { refreshInventory(); refreshDemand(); refreshManifest(); }
+      else if (profile.role === "partner") { refreshInventory(); refreshDemand(); refreshManifest(); refreshSupplyRequests(); }
       else { refreshMyBookings(); refreshMyStorage(); refreshMyMoves(); }
     }
   }, [profile]);
@@ -1439,6 +1445,36 @@ function App() {
   async function refreshManifest() {
     const { data } = await db.rpc("get_item_manifest");
     if (data) setItemManifest(data);
+  }
+  async function refreshSupplyRequests() {
+    const { data } = await db.from("partner_supply_requests").select("*").order("created_at", { ascending: false });
+    if (data) setSupplyRequests(data);
+  }
+  async function submitSupplyRequest(e) {
+    e.preventDefault();
+    if (!session || busy) return;
+    if (!supplyItem) { setSupplyMsg("Pick an item first."); return; }
+    const qty = parseInt(supplyQty, 10);
+    if (!qty || qty <= 0) { setSupplyMsg("Enter how many units you can supply."); return; }
+    setBusy(true); setSupplyMsg("");
+    const { error } = await db.from("partner_supply_requests").insert({
+      item_id: supplyItem, partner_id: session.user.id, quantity: qty,
+      available_by: supplyDate || null, note: supplyNote.trim() || null,
+    });
+    setBusy(false);
+    if (error) { setSupplyMsg("Couldn't send that: " + error.message); return; }
+    setSupplyItem(""); setSupplyQty(""); setSupplyDate(""); setSupplyNote("");
+    setSupplyMsg("Sent to the admin.");
+    refreshSupplyRequests();
+  }
+  async function respondSupplyRequest(id, status) {
+    const { error } = await db.from("partner_supply_requests").update({ status, responded_at: new Date().toISOString(), responded_by: session.user.id }).eq("id", id);
+    if (error) { alert("Couldn't update that request: " + error.message); return; }
+    if (status === "accepted") {
+      const row = supplyRequests.find(r => r.id === id);
+      if (row) { const cur = stockOf(row.item_id); await db.from("inventory").update({ stock: cur + row.quantity }).eq("item_id", row.item_id); refreshInventory(); }
+    }
+    refreshSupplyRequests();
   }
   async function refreshAllProfiles() {
     const { data } = await db.from("profiles").select("*").order("created_at");
@@ -2478,7 +2514,7 @@ function App() {
                   h("input", { value: commentDraft[p.id] || "", onChange: e => setCommentDraft(prev => ({ ...prev, [p.id]: e.target.value })), placeholder: "Add a comment…", style: { flex: 1 } }),
                   h("button", { className: "rn-btn rn-btn-ghost", type: "submit", disabled: busy }, "Post")
                 )
-              : h("p", { style: { fontSize: 13, color: "var(--ink-faint)" } }, session ? "Partner and transporter accounts can't comment." : "Log in to comment.")
+              : h("p", { style: { fontSize: 13, color: "var(--ink-faint)" } }, session ? (profile?.role === "admin" ? "Admins can moderate here but can't post or comment." : "Partner and transporter accounts can't comment.") : "Log in to comment.")
           )
         );
       })),
@@ -2654,6 +2690,26 @@ function App() {
           )))
         ))
       ),
+      h("div", { className: "rn-admin-section" }, h("h3", null, "Partner supply requests" + (supplyRequests.filter(r => r.status === "pending").length ? " (" + supplyRequests.filter(r => r.status === "pending").length + " pending)" : "")),
+        h("p", { className: "rn-note", style: { marginTop: -6 } }, "Accepting adds the quantity straight to stock."),
+        supplyRequests.length === 0
+          ? h("p", { className: "rn-note" }, "No requests from partners yet.")
+          : h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
+              h("thead", null, h("tr", null, h("th", null, "Sent"), h("th", null, "Item"), h("th", null, "Qty"), h("th", null, "Available by"), h("th", null, "Note"), h("th", null, "Status"), h("th", null))),
+              h("tbody", null, supplyRequests.map(r => h("tr", { key: r.id },
+                h("td", null, formatDate(r.created_at.slice(0, 10), true)),
+                h("td", null, ITEM_DEFS[r.item_id] ? ITEM_DEFS[r.item_id].name : r.item_id),
+                h("td", null, r.quantity),
+                h("td", null, r.available_by ? formatDate(r.available_by, true) : "—"),
+                h("td", null, r.note || "—"),
+                h("td", null, StatusPill(r.status.charAt(0).toUpperCase() + r.status.slice(1))),
+                h("td", null, r.status === "pending" ? h("div", { style: { display: "flex", gap: 6 } },
+                  h("button", { className: "rn-btn rn-btn-dark", onClick: () => respondSupplyRequest(r.id, "accepted") }, "Accept"),
+                  h("button", { className: "rn-btn rn-btn-ghost", onClick: () => respondSupplyRequest(r.id, "declined") }, "Decline")
+                ) : null)
+              )))
+            ))
+      ),
       h("div", { className: "rn-admin-section" }, h("h3", null, "Storage requests"),
         storageBookings.length === 0 ? h("p", { className: "rn-note" }, "No storage requests yet.") :
         h("div", { className: "rn-table-wrap" }, h("table", { className: "rn-table" },
@@ -2711,6 +2767,10 @@ function App() {
             h("td", null, m.ok ? (m.delivery_status || "sent") : "failed (" + (m.error_code || "error") + ")")
           )))
         ))
+      ),
+      h("div", { className: "rn-admin-section" }, h("h3", null, "Circles moderation"),
+        h("p", { className: "rn-note", style: { marginTop: -4 } }, circlePosts.length, " post", circlePosts.length === 1 ? "" : "s", " on the board. Open Circles to delete a post or a comment; you can't post or comment yourself."),
+        h("button", { className: "rn-btn rn-btn-ghost", onClick: () => goTo("circles") }, "Open Circles")
       ),
       h("div", { className: "rn-admin-section" }, h("h3", null, "Contact messages" + (contactMsgs.filter(m => m.status === "new").length ? " (" + contactMsgs.filter(m => m.status === "new").length + " new)" : "")),
         contactMsgs.length === 0 ? h("p", { className: "rn-note" }, "No messages yet.") :
@@ -2831,6 +2891,33 @@ function App() {
                 h("td", null, row.quantity)
               )))
             ))
+      ),
+      h("div", { className: "rn-admin-section" }, h("h3", null, "Request to supply stock"),
+        h("p", { className: "rn-note", style: { marginTop: -6 } }, "Offer a quantity and date. An admin approves it before it adds to stock."),
+        h("form", { onSubmit: submitSupplyRequest, style: { display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" } },
+          h("div", { className: "rn-field", style: { marginBottom: 0, minWidth: 170 } }, h("label", null, "Item"),
+            h("select", { value: supplyItem, onChange: e => setSupplyItem(e.target.value) },
+              h("option", { value: "" }, "Select item…"),
+              inventory.map(it => h("option", { key: it.item_id, value: it.item_id }, it.name)))),
+          h("div", { className: "rn-field", style: { marginBottom: 0, width: 110 } }, h("label", null, "Quantity"),
+            h("input", { type: "number", min: 1, max: 500, value: supplyQty, onChange: e => setSupplyQty(e.target.value) })),
+          h("div", { className: "rn-field", style: { marginBottom: 0, width: 160 } }, h("label", null, "Available by"),
+            h("input", { type: "date", min: todayISO(), value: supplyDate, onChange: e => setSupplyDate(e.target.value) })),
+          h("div", { className: "rn-field", style: { marginBottom: 0, flex: 1, minWidth: 180 } }, h("label", null, "Note (optional)"),
+            h("input", { value: supplyNote, onChange: e => setSupplyNote(e.target.value), placeholder: "e.g. can split into two deliveries" })),
+          h("button", { className: "rn-btn rn-btn-primary", type: "submit", disabled: busy }, busy ? "Sending…" : "Send request")
+        ),
+        supplyMsg && h("p", { className: "rn-note" }, supplyMsg),
+        supplyRequests.length > 0 && h("div", { className: "rn-table-wrap", style: { marginTop: 16 } }, h("table", { className: "rn-table" },
+          h("thead", null, h("tr", null, h("th", null, "Sent"), h("th", null, "Item"), h("th", null, "Qty"), h("th", null, "Available by"), h("th", null, "Status"))),
+          h("tbody", null, supplyRequests.map(r => h("tr", { key: r.id },
+            h("td", null, formatDate(r.created_at.slice(0, 10), true)),
+            h("td", null, ITEM_DEFS[r.item_id] ? ITEM_DEFS[r.item_id].name : r.item_id),
+            h("td", null, r.quantity),
+            h("td", null, r.available_by ? formatDate(r.available_by, true) : "—"),
+            h("td", null, StatusPill(r.status.charAt(0).toUpperCase() + r.status.slice(1)))
+          )))
+        ))
       )
     );
   }
@@ -3083,7 +3170,7 @@ function App() {
   else if (view === "transport") body = (profile && profile.role === "transporter") ? TransportView() : h("div", { className: "rn-loading" }, "Transport access only.");
   else if (view === "partner") body = (profile && profile.role === "partner") ? PartnerView() : h("div", { className: "rn-loading" }, "Partner access only.");
   else if (view === "wishlist") body = staffRole ? staffBlocked : WishlistView();
-  else if (view === "circles") body = staffRole ? h("div", { className: "rn-loading" }, "Circles is for students only. Use your dashboard instead.") : CirclesView();
+  else if (view === "circles") body = (staffRole && staffRole !== "admin") ? h("div", { className: "rn-loading" }, "Circles is for students only. Use your dashboard instead.") : CirclesView();
   else if (view === "storage") body = staffRole ? staffBlocked : StorageView();
   else if (view === "moves") body = staffRole ? staffBlocked : MovesView();
   else if (view === "auth") body = AuthForm({});
